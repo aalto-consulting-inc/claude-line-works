@@ -12,8 +12,9 @@
 1. https://dev.worksmobile.com/ (Developer Console) にテナント管理者でログイン
 2. 「アプリの新規追加」でクライアントアプリを作成
    - アプリの種類は **「認証アプリ」** を選ぶ(「プロビジョニングアプリ」は SCIM 連携用で今回は使わない)
-3. **OAuth Scopes** に掲示板の読み取りスコープを追加
-   - [ ] コンソールに表示された正確なスコープ名を記録: `____________`(想定: `board.read` または `board`)
+3. **OAuth Scopes** に読み取りスコープを追加(今回の設定: `board.read` / `bot.read` / `calendar.read`)
+   - [ ] コンソールに表示された正確なスコープ名を記録: `____________`
+   - ※ プラグインが実際に使うのは当面 `board.read` のみ。bot / calendar は将来の機能拡張用にアプリへ登録しておく
 4. **Redirect URL** に `http://localhost:9876/callback` を登録
    - [ ] localhost の URL が登録できたか: はい / いいえ
    - **いいえの場合**: ローカルコールバック方式が成立しないため、手動コード貼り付けを主フローに変更する(docs/plan.md のリスク 1)
@@ -25,13 +26,14 @@
 export CID='(Client ID)'
 export SECRET='(Client Secret)'
 export REDIRECT='http://localhost:9876/callback'
-export SCOPE='board.read'   # ← 手順3で確認した正確な名前に置き換え
+# 複数スコープは半角スペース区切り(OAuth 2.0 標準)。URL に埋め込む際は %20 にする
+export SCOPE='board.read%20bot.read%20calendar.read'
 ```
 
-> **スコープを複数指定する場合**: 半角スペース区切り(OAuth 2.0 標準)。
-> 認可 URL に埋め込むときはスペースを `%20` にする(例: `scope=board.read%20user.read`)。
-> `export SCOPE='board.read user.read'` とした場合、下の echo で組み立てた URL のスペースは手で `%20` に直すこと。
+> **スコープの指定方法**: 半角スペース区切り。認可 URL 内ではスペースを `%20` にエンコードする
+> (上の export はエンコード済みの形で書いてあるので、そのまま URL に使える)。
 > トークン交換(手順2)の curl に scope パラメータは不要(authorize 時のスコープが引き継がれる)。
+> プラグイン本体が要求するのは `board.read` のみ(最小権限)。curl 検証では3スコープで取得しても問題ない。
 
 ## 1. 認可コード取得(ブラウザ)
 
