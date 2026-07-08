@@ -28,6 +28,11 @@ export REDIRECT='http://localhost:9876/callback'
 export SCOPE='board.read'   # ← 手順3で確認した正確な名前に置き換え
 ```
 
+> **スコープを複数指定する場合**: 半角スペース区切り(OAuth 2.0 標準)。
+> 認可 URL に埋め込むときはスペースを `%20` にする(例: `scope=board.read%20user.read`)。
+> `export SCOPE='board.read user.read'` とした場合、下の echo で組み立てた URL のスペースは手で `%20` に直すこと。
+> トークン交換(手順2)の curl に scope パラメータは不要(authorize 時のスコープが引き継がれる)。
+
 ## 1. 認可コード取得(ブラウザ)
 
 以下の URL を組み立ててブラウザで開く:
