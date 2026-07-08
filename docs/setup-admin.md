@@ -37,6 +37,13 @@ LINE WORKS 掲示板プラグインを社内で使えるようにするための
 - プラグインができるのは掲示板の**読み取りのみ**です。投稿・編集・削除はできません
 - ログイン状態は約 90 日で失効します。失効した利用者は再度ブラウザでログインするだけで復旧します
 
+## 参考: 公式ドキュメント
+
+- [LINE WORKS Developers ドキュメント](https://developers.worksmobile.com/jp/docs)
+- [Developer Console の使い方](https://developers.worksmobile.com/jp/docs/developer-console)
+- [認可・認証の概要](https://developers.worksmobile.com/jp/docs/auth)
+- [Board(掲示板)API](https://developers.worksmobile.com/jp/docs/board)
+
 ## トラブルシューティング
 
 | 症状 | 対処 |

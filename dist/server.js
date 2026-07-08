@@ -38763,6 +38763,51 @@ var WorksApiError = class extends Error {
   }
 };
 var MAX_RETRIES = 3;
+function parseJsonSafe(text2) {
+  let out = "";
+  let i = 0;
+  let inString = false;
+  while (i < text2.length) {
+    const ch = text2[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += text2[i + 1] ?? "";
+        i += 2;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      i++;
+      continue;
+    }
+    if (ch === "-" || ch >= "0" && ch <= "9") {
+      let j = ch === "-" ? i + 1 : i;
+      const digitsStart = j;
+      while (j < text2.length && text2[j] >= "0" && text2[j] <= "9") j++;
+      const digits = j - digitsStart;
+      const next = text2[j];
+      const isPlainInteger = next !== "." && next !== "e" && next !== "E";
+      if (digits >= 16 && isPlainInteger) {
+        out += `"${text2.slice(i, j)}"`;
+        i = j;
+        continue;
+      }
+      while (j < text2.length && /[0-9.eE+-]/.test(text2[j])) j++;
+      out += text2.slice(i, j);
+      i = j;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return JSON.parse(out);
+}
 var WorksApiClient = class {
   constructor(auth, options = {}) {
     this.auth = auth;
@@ -38802,7 +38847,7 @@ var WorksApiClient = class {
         headers: { authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        return res.json();
+        return parseJsonSafe(await res.text());
       }
       if (res.status === 401 && !refreshedOnce) {
         refreshedOnce = true;

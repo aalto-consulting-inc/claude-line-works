@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { WorksApiClient, WorksApiError } from "../src/client.js";
+import { WorksApiClient, WorksApiError, parseJsonSafe } from "../src/client.js";
 
 const okJson = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -20,6 +20,59 @@ function makeClient(fetchFn: ReturnType<typeof vi.fn>, auth?: Partial<Auth>) {
   return { client, auth: fullAuth };
 }
 type Auth = { getAccessToken(): Promise<string>; forceRefresh(): Promise<string> };
+
+describe("parseJsonSafe", () => {
+  // 実測 (docs/api-notes.md 4.1) の縮約版: boardId は 19 桁の数値で返る
+  const realWorldFixture =
+    '{"boards":[' +
+    '{"boardId":4020000001470191001,"boardName":"お知らせ","description":null,' +
+    '"tenantBoard":false,"createdTime":"2021-04-07T12:17:59+09:00","displayOrder":20000},' +
+    '{"boardId":4090000000118263086,"boardName":"総務関連","description":null,"displayOrder":110000}' +
+    '],"responseMetaData":{"nextCursor":null}}';
+
+  it("19 桁の boardId を精度を失わず文字列として取り出せる", () => {
+    const parsed = parseJsonSafe(realWorldFixture) as {
+      boards: { boardId: string; displayOrder: number }[];
+      responseMetaData: { nextCursor: null };
+    };
+    expect(parsed.boards[0].boardId).toBe("4020000001470191001");
+    expect(parsed.boards[1].boardId).toBe("4090000000118263086");
+    // JSON.parse 直だと丸められることの確認(このバグを防いでいる)
+    expect(String(JSON.parse(realWorldFixture).boards[0].boardId)).not.toBe(
+      "4020000001470191001"
+    );
+  });
+
+  it("小さい整数・小数・指数は数値のまま", () => {
+    const parsed = parseJsonSafe(
+      '{"a":20000,"b":1.5,"c":1e20,"d":-42,"e":0.000001}'
+    ) as Record<string, number>;
+    expect(parsed.a).toBe(20000);
+    expect(parsed.b).toBe(1.5);
+    expect(parsed.c).toBe(1e20);
+    expect(parsed.d).toBe(-42);
+    expect(parsed.e).toBe(0.000001);
+  });
+
+  it("負の 16 桁以上の整数も文字列化する", () => {
+    const parsed = parseJsonSafe('{"a":-4020000001470191001}') as { a: string };
+    expect(parsed.a).toBe("-4020000001470191001");
+  });
+
+  it("文字列リテラル内の数字列やエスケープは変更しない", () => {
+    const parsed = parseJsonSafe(
+      '{"note":"a, 1234567890123456789, b","quote":"say \\"1234567890123456789\\""}'
+    ) as { note: string; quote: string };
+    expect(parsed.note).toBe("a, 1234567890123456789, b");
+    expect(parsed.quote).toBe('say "1234567890123456789"');
+  });
+
+  it("配列の中の大きな整数も文字列化する", () => {
+    const parsed = parseJsonSafe("[4020000001470191001, 5]") as [string, number];
+    expect(parsed[0]).toBe("4020000001470191001");
+    expect(parsed[1]).toBe(5);
+  });
+});
 
 describe("WorksApiClient", () => {
   it("Bearer トークン付きで GET し JSON を返す", async () => {

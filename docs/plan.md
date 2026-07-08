@@ -157,8 +157,8 @@ claude-line-works/
 
 ### 進捗チェックリスト(docs/plan.md 末尾に含める)
 
-- [ ] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認
-- [ ] Phase 0: curl で 認可→トークン→掲示板一覧→投稿→コメント→リフレッシュ を一巡、api-notes.md 記録
+- [x] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認(2026-07-08: 登録可、認可〜リフレッシュ成功)
+- [ ] Phase 0: curl で 認可→トークン→掲示板一覧→投稿→コメント→リフレッシュ を一巡、api-notes.md 記録(掲示板一覧まで完了。残り: 投稿・本文・コメント・エラー形式)
 - [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green(2026-07-08)
 - [x] Phase 1: esbuild バンドル(dist/server.js)(2026-07-08)
 - [x] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過(2026-07-08)

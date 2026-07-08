@@ -27,6 +27,59 @@ export type Query = Record<string, string | number | undefined>;
 const MAX_RETRIES = 3;
 
 /**
+ * boardId 等の ID は 19 桁の JSON 数値で返る(実測: docs/api-notes.md)。
+ * Number の安全な整数範囲(約 9.0e15)を超えて丸められるため、
+ * パース前に 16 桁以上の整数リテラルを文字列に変換する。
+ * 文字列リテラル内の数字列は変更しない。
+ */
+export function parseJsonSafe(text: string): unknown {
+  let out = "";
+  let i = 0;
+  let inString = false;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\") {
+        out += text[i + 1] ?? "";
+        i += 2;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      i++;
+      continue;
+    }
+    if (ch === "-" || (ch >= "0" && ch <= "9")) {
+      let j = ch === "-" ? i + 1 : i;
+      const digitsStart = j;
+      while (j < text.length && text[j] >= "0" && text[j] <= "9") j++;
+      const digits = j - digitsStart;
+      const next = text[j];
+      const isPlainInteger = next !== "." && next !== "e" && next !== "E";
+      if (digits >= 16 && isPlainInteger) {
+        out += `"${text.slice(i, j)}"`;
+        i = j;
+        continue;
+      }
+      // 小数・指数部も含めて数値トークンを読み切る
+      while (j < text.length && /[0-9.eE+-]/.test(text[j])) j++;
+      out += text.slice(i, j);
+      i = j;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return JSON.parse(out);
+}
+
+/**
  * worksapis.com の薄い REST クライアント。
  * エンドポイントパスは Phase 0 の curl 検証 (docs/api-notes.md) に合わせてここだけを直す。
  */
@@ -80,7 +133,7 @@ export class WorksApiClient {
       });
 
       if (res.ok) {
-        return res.json();
+        return parseJsonSafe(await res.text());
       }
 
       // トークン失効: 一度だけリフレッシュして再試行

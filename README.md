@@ -49,6 +49,13 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 - リリース前の手動検証: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
 
+## 参考リンク
+
+- [LINE WORKS Developers ドキュメント](https://developers.worksmobile.com/jp/docs)
+- [Board(掲示板)API](https://developers.worksmobile.com/jp/docs/board)
+- [ユーザーアカウント認証(OAuth 2.0)](https://developers.worksmobile.com/jp/docs/auth-oauth)
+- [Claude Code プラグインドキュメント](https://code.claude.com/docs/en/plugins)
+
 ## ライセンス
 
 MIT
