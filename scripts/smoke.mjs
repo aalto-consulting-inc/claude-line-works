@@ -7,7 +7,14 @@ import * as path from "node:path";
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const serverPath = path.join(root, "dist", "server.js");
 
-const EXPECTED_TOOLS = ["authorize", "list_boards", "list_posts", "get_post", "list_comments"];
+const EXPECTED_TOOLS = [
+  "authorize",
+  "list_boards",
+  "list_recent_posts",
+  "list_posts",
+  "get_post",
+  "list_comments",
+];
 
 const child = spawn(process.execPath, [serverPath], {
   stdio: ["pipe", "pipe", "inherit"],

@@ -101,6 +101,11 @@ export class WorksApiClient {
     return this.get("/boards", query);
   }
 
+  /** 全掲示板を横断した最新投稿リスト (GET /boards/recent/posts) */
+  listRecentPosts(query: Query = {}): Promise<unknown> {
+    return this.get("/boards/recent/posts", query);
+  }
+
   listPosts(boardId: string, query: Query = {}): Promise<unknown> {
     return this.get(`/boards/${encodeURIComponent(boardId)}/posts`, query);
   }
@@ -128,9 +133,19 @@ export class WorksApiClient {
     let refreshedOnce = false;
 
     for (let attempt = 0; ; attempt++) {
-      const res = await this.fetchFn(url.toString(), {
+      // 307 (別インスタンスのリソース) はクロスオリジンで Authorization が落ちるため手動で追随する
+      let res = await this.fetchFn(url.toString(), {
         headers: { authorization: `Bearer ${token}` },
+        redirect: "manual",
       });
+
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) throw new WorksApiError(res.status, "リダイレクト先が不明です");
+        res = await this.fetchFn(location, {
+          headers: { authorization: `Bearer ${token}` },
+        });
+      }
 
       if (res.ok) {
         return parseJsonSafe(await res.text());

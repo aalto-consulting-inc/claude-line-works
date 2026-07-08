@@ -53,10 +53,10 @@ async function run(deps: ToolDeps, fn: () => Promise<ToolResult>): Promise<ToolR
 const json = (value: unknown): ToolResult => text(JSON.stringify(value, null, 2));
 
 const paginationParams = {
-  count: z.number().int().min(1).max(100).optional()
-    .describe("取得件数 (既定はAPI側の既定値)"),
+  count: z.number().int().min(1).max(40).optional()
+    .describe("取得件数 (既定 20、最大 40)"),
   cursor: z.string().optional()
-    .describe("前回レスポンスの nextCursor。続きを取得するときに指定"),
+    .describe("前回レスポンスの responseMetaData.nextCursor。続きを取得するときに指定"),
 };
 
 export function registerTools(server: McpServer, deps: ToolDeps): void {
@@ -90,6 +90,14 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
     { ...paginationParams },
     async ({ count, cursor }) =>
       run(deps, async () => json(await deps.client.listBoards({ count, cursor })))
+  );
+
+  server.tool(
+    "list_recent_posts",
+    "全掲示板を横断して最新の投稿一覧を取得する。掲示板を特定せず「最近のお知らせ」「今週の投稿」をまとめたいときに最初に使う",
+    { ...paginationParams },
+    async ({ count, cursor }) =>
+      run(deps, async () => json(await deps.client.listRecentPosts({ count, cursor })))
   );
 
   server.tool(

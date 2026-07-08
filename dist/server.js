@@ -38821,6 +38821,10 @@ var WorksApiClient = class {
   listBoards(query = {}) {
     return this.get("/boards", query);
   }
+  /** 全掲示板を横断した最新投稿リスト (GET /boards/recent/posts) */
+  listRecentPosts(query = {}) {
+    return this.get("/boards/recent/posts", query);
+  }
   listPosts(boardId, query = {}) {
     return this.get(`/boards/${encodeURIComponent(boardId)}/posts`, query);
   }
@@ -38843,9 +38847,17 @@ var WorksApiClient = class {
     let token = await this.auth.getAccessToken();
     let refreshedOnce = false;
     for (let attempt = 0; ; attempt++) {
-      const res = await this.fetchFn(url.toString(), {
-        headers: { authorization: `Bearer ${token}` }
+      let res = await this.fetchFn(url.toString(), {
+        headers: { authorization: `Bearer ${token}` },
+        redirect: "manual"
       });
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) throw new WorksApiError(res.status, "\u30EA\u30C0\u30A4\u30EC\u30AF\u30C8\u5148\u304C\u4E0D\u660E\u3067\u3059");
+        res = await this.fetchFn(location, {
+          headers: { authorization: `Bearer ${token}` }
+        });
+      }
       if (res.ok) {
         return parseJsonSafe(await res.text());
       }
@@ -38926,8 +38938,8 @@ async function run(deps, fn) {
 }
 var json = (value) => text(JSON.stringify(value, null, 2));
 var paginationParams = {
-  count: external_exports.number().int().min(1).max(100).optional().describe("\u53D6\u5F97\u4EF6\u6570 (\u65E2\u5B9A\u306FAPI\u5074\u306E\u65E2\u5B9A\u5024)"),
-  cursor: external_exports.string().optional().describe("\u524D\u56DE\u30EC\u30B9\u30DD\u30F3\u30B9\u306E nextCursor\u3002\u7D9A\u304D\u3092\u53D6\u5F97\u3059\u308B\u3068\u304D\u306B\u6307\u5B9A")
+  count: external_exports.number().int().min(1).max(40).optional().describe("\u53D6\u5F97\u4EF6\u6570 (\u65E2\u5B9A 20\u3001\u6700\u5927 40)"),
+  cursor: external_exports.string().optional().describe("\u524D\u56DE\u30EC\u30B9\u30DD\u30F3\u30B9\u306E responseMetaData.nextCursor\u3002\u7D9A\u304D\u3092\u53D6\u5F97\u3059\u308B\u3068\u304D\u306B\u6307\u5B9A")
 };
 function registerTools(server, deps) {
   server.tool(
@@ -38957,6 +38969,12 @@ ${authorizeUrl}
     "\u30A2\u30AF\u30BB\u30B9\u53EF\u80FD\u306A LINE WORKS \u63B2\u793A\u677F\u306E\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
     { ...paginationParams },
     async ({ count, cursor }) => run(deps, async () => json(await deps.client.listBoards({ count, cursor })))
+  );
+  server.tool(
+    "list_recent_posts",
+    "\u5168\u63B2\u793A\u677F\u3092\u6A2A\u65AD\u3057\u3066\u6700\u65B0\u306E\u6295\u7A3F\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B\u3002\u63B2\u793A\u677F\u3092\u7279\u5B9A\u305B\u305A\u300C\u6700\u8FD1\u306E\u304A\u77E5\u3089\u305B\u300D\u300C\u4ECA\u9031\u306E\u6295\u7A3F\u300D\u3092\u307E\u3068\u3081\u305F\u3044\u3068\u304D\u306B\u6700\u521D\u306B\u4F7F\u3046",
+    { ...paginationParams },
+    async ({ count, cursor }) => run(deps, async () => json(await deps.client.listRecentPosts({ count, cursor })))
   );
   server.tool(
     "list_posts",

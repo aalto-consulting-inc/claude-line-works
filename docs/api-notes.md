@@ -140,9 +140,14 @@ curl -sS -H "Authorization: Bearer $AT" \
 
 ```sh
 export BOARD_ID='(4.1 で得た boardId)'
+echo "BOARD_ID=[$BOARD_ID]"   # ← 空でないことを必ず確認(空だと /boards//posts になり {"code":"NOT_FOUND","description":"Api not exists"} が返る)
 curl -sS -H "Authorization: Bearer $AT" \
   "https://www.worksapis.com/v1.0/boards/${BOARD_ID}/posts?count=10"
 ```
+
+> **パスは公式リファレンス(docs/reference/board-post-list.pdf)で確認済み**: `GET /v1.0/boards/{boardId}/posts`。
+> `count` は既定 20・最大 40。続きは `cursor`(URL エンコード必要 → curl では `--data-urlencode` 相当の注意)。
+> 2026-07-08 の初回実行で `Api not exists` が返ったのは BOARD_ID 未設定によるパス崩れの可能性が高い。
 
 **実行結果**:
 
@@ -168,8 +173,9 @@ curl -sS -H "Authorization: Bearer $AT" \
 (ここに貼る)
 ```
 
-- [ ] 本文フィールド名と形式(HTML か? どんなタグが来るか):
-- [ ] 添付ファイルはどう表現されるか:
+- [x] 本文フィールド名と形式: `body`(**HTML**)— 公式リファレンス(docs/reference/board-post-get.pdf)で確認。その他のフィールド: title / readCount / commentCount / fileCount / createdTime / modifiedTime / isMustRead / mustReadPeriod / enableComment / userId / userName
+- [x] **HTTP 307 が返ることがある**(別インスタンスのリソース → Location へ Authorization 付きで再リクエスト)。実装対応済み(client.ts)
+- [ ] 添付ファイルはどう表現されるか: (fileCount と attachments API。実測は未)
 
 ### 4.4 コメント一覧
 
@@ -184,8 +190,8 @@ curl -sS -H "Authorization: Bearer $AT" \
 (ここに貼る)
 ```
 
-- [ ] エンドポイントパスは正しかったか:
-- [ ] コメント本文のフィールド名・形式:
+- [ ] エンドポイントパスは正しかったか: (公式リファレンスでは `GET /boards/{boardId}/posts/{postId}/comments`、本文フィールドは `content`。実測は未)
+- [ ] コメント本文のフィールド名・形式: `content`(公式リファレンスより。実測で要確認)
 
 ## 5. エラー形式の記録
 
@@ -208,7 +214,11 @@ curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/9
 - メモ: Rotation ON の場合、リフレッシュ成功で古い refresh_token は失効する。認可のやり直しでも旧 RT が無効になる場合がある
 - [ ] レート制限(429)のヘッダー(`Retry-After` の有無)— 発生したら記録:
 
-## 参考: 公式ドキュメント
+## 参考: 公式ドキュメント(PDF 保存版あり)
+
+**公式リファレンスの PDF 保存版を `docs/reference/` に置いた**(2026-07-08 取得)。詳細は docs/reference/README.md。
+判明した追加エンドポイント: `GET /boards/recent/posts`(全掲示板横断の最新投稿)→ ツール `list_recent_posts` として実装済み。
+
 
 - LINE WORKS Developers ドキュメント トップ: https://developers.worksmobile.com/jp/docs
 - 認可・認証の概要: https://developers.worksmobile.com/jp/docs/auth

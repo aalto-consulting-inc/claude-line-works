@@ -27,6 +27,7 @@ LINE WORKS の掲示板(Board)を Claude / Claude Cowork から読み取り、�
 |---|---|
 | `authorize` | LINE WORKS へのログイン認可 |
 | `list_boards` | 掲示板の一覧 |
+| `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
 | `list_posts` | 掲示板の投稿一覧 |
 | `get_post` | 投稿本文(Markdown 変換) |
 | `list_comments` | 投稿のコメント一覧 |

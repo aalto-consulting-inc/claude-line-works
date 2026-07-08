@@ -139,6 +139,32 @@ describe("WorksApiClient", () => {
     await expect(client.listBoards()).rejects.toThrow(/しばらく待って/);
   });
 
+  it("307 リダイレクトに Authorization 付きで追随する", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 307,
+          headers: { location: "https://jp1.worksapis.com/v1.0/boards/b1/posts/p1" },
+        })
+      )
+      .mockResolvedValueOnce(okJson({ postId: 1 }));
+    const { client } = makeClient(fetchFn);
+    expect(await client.getPost("b1", "p1")).toEqual({ postId: 1 });
+    const [redirectUrl, init] = fetchFn.mock.calls[1];
+    expect(redirectUrl).toBe("https://jp1.worksapis.com/v1.0/boards/b1/posts/p1");
+    expect(init.headers.authorization).toBe("Bearer token1");
+  });
+
+  it("recent posts のエンドポイントを叩く", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(okJson({ posts: [] }));
+    const { client } = makeClient(fetchFn);
+    await client.listRecentPosts({ count: 40 });
+    expect(fetchFn.mock.calls[0][0]).toBe(
+      "https://www.worksapis.com/v1.0/boards/recent/posts?count=40"
+    );
+  });
+
   it("404 は掲示板/投稿が見つからない旨のメッセージ", async () => {
     const fetchFn = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ code: "NOT_FOUND", description: "board not found" }), {
