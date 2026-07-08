@@ -3,7 +3,7 @@
 このファイルは curl による実 API 検証の**一次記録**です。実装(`server/src/client.ts` ほか)はこのファイルの実レスポンスに合わせます。
 検証のたびに「実行結果」欄を実際のレスポンス(トークン等の秘匿情報はマスク)で埋めてください。
 
-- 検証日: 2026-07-08(進行中: 手順1〜3 と 4.1 まで完了)
+- 検証日: 2026-07-08(**完了** — コメント(4.4)はスコープ外の決定により対象外)
 - 検証者: (クライアント管理者)
 - 使用テナント: (社名は記録しない)
 
@@ -193,25 +193,15 @@ curl -sS -H "Authorization: Bearer $AT" \
 (ここに貼る)
 ```
 
-- [x] 本文フィールド名と形式: `body`(**HTML**)— 公式リファレンス(docs/reference/board-post-get.pdf)で確認。その他のフィールド: title / readCount / commentCount / fileCount / createdTime / modifiedTime / isMustRead / mustReadPeriod / enableComment / userId / userName
+- [x] 本文フィールド名と形式(2026-07-08 実測): `body` = **HTML**。ただし見出し/リストタグではなく **`<div>`/`<span>`/`<br>` ベース**(スタイル付き div の入れ子)。htmlToMarkdown の変換テストに実測構造のフィクスチャを追加済み
+- [x] **公式リファレンス未記載の `plainTextBody` フィールドが実際には返る**(改行がスペースに潰れた本文)。実装では body を Markdown 変換して使い、plainTextBody は body 不在時のフォールバック・メタデータ出力からは除外
 - [x] **HTTP 307 が返ることがある**(別インスタンスのリソース → Location へ Authorization 付きで再リクエスト)。実装対応済み(client.ts)
-- [ ] 添付ファイルはどう表現されるか: (fileCount と attachments API。実測は未)
+- [ ] 添付ファイルはどう表現されるか: `fileCount` のみ確認(添付本体の取得は attachments API。実測は未・現状スコープ外)
 
-### 4.4 コメント一覧
+### 4.4 コメント一覧 — **スコープ外(2026-07-08 決定)**
 
-```sh
-curl -sS -H "Authorization: Bearer $AT" \
-  "https://www.worksapis.com/v1.0/boards/${BOARD_ID}/posts/${POST_ID}/comments"
-```
-
-**実行結果**:
-
-```json
-(ここに貼る)
-```
-
-- [ ] エンドポイントパスは正しかったか: (公式リファレンスでは `GET /boards/{boardId}/posts/{postId}/comments`、本文フィールドは `content`。実測は未)
-- [ ] コメント本文のフィールド名・形式: `content`(公式リファレンスより。実測で要確認)
+ユーザー決定によりコメント取得はプラグインの対象外とした。`list_comments` ツールは実装から削除済み。
+(参考: 公式リファレンスでは `GET /boards/{boardId}/posts/{postId}/comments`、本文フィールドは `content`。将来対応する場合はここから)
 
 ## 5. エラー形式の記録
 
@@ -223,13 +213,15 @@ curl -sS -H "Authorization: Bearer invalid" "https://www.worksapis.com/v1.0/boar
 curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/999999999/posts"
 ```
 
-**実行結果**:
+**実行結果**(2026-07-08 実測):
 
 ```json
-(ここに貼る)
+{"code":"UNAUTHORIZED","description":"Malformed authentication token"}
+{"code":"ACCESS_DENIED","description":"Access is denied."}
 ```
 
-- [ ] エラー JSON の構造(`code` / `description` などのフィールド名):
+- [x] エラー JSON の構造: `{"code": "...", "description": "..."}` — 実装(client.ts formatError)の想定どおり
+- [x] 不正トークン → `UNAUTHORIZED` / **存在しない boardId → `NOT_FOUND` ではなく `ACCESS_DENIED`**(権限エラーと区別されない点に注意。エラーメッセージの文言は「アクセス権がないか ID が誤っている」の両方に触れるのが望ましい)
 - [x] 認証エンドポイント(auth.worksmobile.com)のエラー形式: `{"returnCode":"99","returnMessage":"UnexpectedError"}` — リクエスト不正時の汎用エラー(2026-07-08 実測)。Board API 側とは形式が異なる点に注意
 - メモ: Rotation ON の場合、リフレッシュ成功で古い refresh_token は失効する。認可のやり直しでも旧 RT が無効になる場合がある
 - [ ] レート制限(429)のヘッダー(`Retry-After` の有無)— 発生したら記録:
@@ -251,6 +243,6 @@ curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/9
 
 ## 6. 完了条件
 
-- [ ] 認可 → トークン → 掲示板一覧 → 投稿本文 → コメント → リフレッシュ が一巡した
-- [ ] 上記の実行結果がすべてこのファイルに記録された
-- [ ] 実装(client.ts / oauth.ts)との差分を確認し、必要なら docs/plan.md も更新した
+- [x] 認可 → トークン → 掲示板一覧 → 投稿一覧 → 投稿本文 → リフレッシュ が一巡した(2026-07-08。コメントはスコープ外)
+- [x] 上記の実行結果がすべてこのファイルに記録された
+- [x] 実装(client.ts / oauth.ts / tools.ts)との差分を確認し反映した(19桁 ID の文字列化、307 追随、plainTextBody 除外、list_comments 削除、count 上限 40、docs/plan.md 更新)

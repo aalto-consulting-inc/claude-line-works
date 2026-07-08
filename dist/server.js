@@ -38833,12 +38833,6 @@ var WorksApiClient = class {
       `/boards/${encodeURIComponent(boardId)}/posts/${encodeURIComponent(postId)}`
     );
   }
-  listComments(boardId, postId, query = {}) {
-    return this.get(
-      `/boards/${encodeURIComponent(boardId)}/posts/${encodeURIComponent(postId)}/comments`,
-      query
-    );
-  }
   async get(pathname, query = {}) {
     const url = new URL(this.baseUrl + pathname);
     for (const [key, value] of Object.entries(query)) {
@@ -38885,7 +38879,8 @@ async function formatError2(res) {
   }
   const hints = {
     401: "\u8A8D\u8A3C\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002authorize \u3067\u30ED\u30B0\u30A4\u30F3\u3057\u76F4\u3057\u3066\u304F\u3060\u3055\u3044",
-    403: "\u3053\u306E\u63B2\u793A\u677F\u3078\u306E\u30A2\u30AF\u30BB\u30B9\u6A29\u304C\u306A\u3044\u304B\u3001\u30A2\u30D7\u30EA\u306E\u30B9\u30B3\u30FC\u30D7\u8A2D\u5B9A\u304C\u4E0D\u8DB3\u3057\u3066\u3044\u307E\u3059",
+    // 実測: 存在しない boardId も 404 ではなく ACCESS_DENIED で返る (docs/api-notes.md 5)
+    403: "\u3053\u306E\u63B2\u793A\u677F\u3078\u306E\u30A2\u30AF\u30BB\u30B9\u6A29\u304C\u306A\u3044\u304B\u3001\u63B2\u793A\u677F/\u6295\u7A3F\u306E ID \u304C\u8AA4\u3063\u3066\u3044\u308B\u304B\u3001\u30A2\u30D7\u30EA\u306E\u30B9\u30B3\u30FC\u30D7\u8A2D\u5B9A\u304C\u4E0D\u8DB3\u3057\u3066\u3044\u307E\u3059",
     404: "\u6307\u5B9A\u3055\u308C\u305F\u63B2\u793A\u677F\u307E\u305F\u306F\u6295\u7A3F\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002ID \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044",
     429: "\u30A2\u30AF\u30BB\u30B9\u304C\u96C6\u4E2D\u3057\u3066\u3044\u307E\u3059\u3002\u3057\u3070\u3089\u304F\u5F85\u3063\u3066\u304B\u3089\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044"
   };
@@ -38997,19 +38992,6 @@ ${authorizeUrl}
       return text(formatPostMarkdown(post));
     })
   );
-  server.tool(
-    "list_comments",
-    "\u6295\u7A3F\u306E\u30B3\u30E1\u30F3\u30C8\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
-    {
-      boardId: external_exports.string().describe("\u63B2\u793A\u677F ID"),
-      postId: external_exports.string().describe("\u6295\u7A3F ID"),
-      ...paginationParams
-    },
-    async ({ boardId, postId, count, cursor }) => run(
-      deps,
-      async () => json(await deps.client.listComments(boardId, postId, { count, cursor }))
-    )
-  );
 }
 var BODY_FIELD_CANDIDATES = ["body", "contents", "content", "bodyText"];
 function formatPostMarkdown(post) {
@@ -39024,6 +39006,10 @@ function formatPostMarkdown(post) {
       break;
     }
   }
+  if (!bodyMarkdown && typeof post.plainTextBody === "string") {
+    bodyMarkdown = post.plainTextBody;
+  }
+  delete rest.plainTextBody;
   const lines = [`# ${title}`, ""];
   if (bodyMarkdown) {
     lines.push(bodyMarkdown, "");

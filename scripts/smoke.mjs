@@ -13,7 +13,6 @@ const EXPECTED_TOOLS = [
   "list_recent_posts",
   "list_posts",
   "get_post",
-  "list_comments",
 ];
 
 const child = spawn(process.execPath, [serverPath], {

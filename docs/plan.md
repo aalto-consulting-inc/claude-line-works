@@ -5,7 +5,7 @@
 - **目的**: LINE WORKS を利用中のクライアント企業(利用者は非エンジニア)が、Claude Cowork から掲示板(Board)の情報を取得・活用して業務を効率化できる Claude プラグインを作る。
 - **リポジトリ**: `aalto-consulting-inc/claude-line-works`(現在は空)。このリポジトリ自体を公開プラグインマーケットプレイスにする。
 - **決定事項**(ユーザー確認済み):
-  - 機能範囲は**読み取り専用**(掲示板一覧・投稿一覧・投稿本文・コメント取得)
+  - 機能範囲は**読み取り専用**(掲示板一覧・投稿一覧・投稿本文の取得)。**コメント取得はスコープ外**(2026-07-08 決定)
   - 認証は**ユーザー OAuth(認可コードフロー)のみ**。Service Account は対応しない。本人の閲覧権限どおりに掲示板が見える
   - OAuth の実現方式は**ローカルコールバック**(MCP サーバーが一時的に localhost で code を受け取る)。Cowork で不成立の場合は手動コード貼り付けにフォールバック
   - **開発の最初のステップは curl による API 動作検証**(コードを書く前に OAuth フローと Board API を確定させる)
@@ -94,9 +94,11 @@ claude-line-works/
 |---|---|
 | `authorize` | 認可 URL の発行/code の受領(上記フロー) |
 | `list_boards` | アクセス可能な掲示板の一覧 |
-| `list_posts` | 指定掲示板の投稿一覧(ページネーション、件数指定) |
-| `get_post` | 投稿本文の取得(**HTML → Markdown 変換して出力**。見出し・リスト・リンク・表を保持) |
-| `list_comments` | 投稿のコメント一覧 |
+| `list_recent_posts` | 全掲示板を横断した最新投稿一覧(GET /boards/recent/posts) |
+| `list_posts` | 指定掲示板の投稿一覧(cursor ページネーション、count 最大 40) |
+| `get_post` | 投稿本文の取得(**HTML → Markdown 変換して出力**) |
+
+※ コメント取得はスコープ外(2026-07-08 決定)。
 
 ### 配布(.claude-plugin/marketplace.json)
 
@@ -158,11 +160,11 @@ claude-line-works/
 ### 進捗チェックリスト(docs/plan.md 末尾に含める)
 
 - [x] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認(2026-07-08: 登録可、認可〜リフレッシュ成功)
-- [ ] Phase 0: curl で 認可→トークン→掲示板一覧→投稿→コメント→リフレッシュ を一巡、api-notes.md 記録(掲示板一覧まで完了。残り: 投稿・本文・コメント・エラー形式)
+- [x] Phase 0: curl で 認可→トークン→掲示板一覧→投稿一覧→本文→リフレッシュ→エラー形式 を一巡、api-notes.md 記録(2026-07-08 完了。コメントはスコープ外)
 - [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green(2026-07-08)
 - [x] Phase 1: esbuild バンドル(dist/server.js)(2026-07-08)
 - [x] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過(2026-07-08)
-- [ ] Phase 2: CI(3 OS マトリクス)green
+- [ ] Phase 2: CI(3 OS マトリクス)green(※ 2026-07-08 ユーザー指示により本セッションではスキップ。次セッション以降)
 - [ ] Phase 3: CLI 手動 E2E(macOS)完了・verification.md 記録
 - [ ] Phase 3: CLI 手動 E2E(Windows)完了
 - [ ] Phase 3: Cowork 実機検証(コールバック可否確認・フォールバック検証)完了

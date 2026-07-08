@@ -125,19 +125,6 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
       })
   );
 
-  server.tool(
-    "list_comments",
-    "投稿のコメント一覧を取得する",
-    {
-      boardId: z.string().describe("掲示板 ID"),
-      postId: z.string().describe("投稿 ID"),
-      ...paginationParams,
-    },
-    async ({ boardId, postId, count, cursor }) =>
-      run(deps, async () =>
-        json(await deps.client.listComments(boardId, postId, { count, cursor }))
-      )
-  );
 }
 
 /** 本文フィールド名は API により揺れる可能性があるため候補から探す (docs/api-notes.md で確定させる) */
@@ -155,6 +142,11 @@ export function formatPostMarkdown(post: Record<string, unknown>): string {
       break;
     }
   }
+  // 実 API は plainTextBody も返す(改行が失われた本文の重複)。body 不在時のフォールバックにのみ使う
+  if (!bodyMarkdown && typeof post.plainTextBody === "string") {
+    bodyMarkdown = post.plainTextBody;
+  }
+  delete rest.plainTextBody;
   const lines = [`# ${title}`, ""];
   if (bodyMarkdown) {
     lines.push(bodyMarkdown, "");

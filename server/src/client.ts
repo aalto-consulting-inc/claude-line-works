@@ -116,13 +116,6 @@ export class WorksApiClient {
     );
   }
 
-  listComments(boardId: string, postId: string, query: Query = {}): Promise<unknown> {
-    return this.get(
-      `/boards/${encodeURIComponent(boardId)}/posts/${encodeURIComponent(postId)}/comments`,
-      query
-    );
-  }
-
   async get(pathname: string, query: Query = {}): Promise<unknown> {
     const url = new URL(this.baseUrl + pathname);
     for (const [key, value] of Object.entries(query)) {
@@ -183,7 +176,8 @@ async function formatError(res: Response): Promise<string> {
   }
   const hints: Record<number, string> = {
     401: "認証に失敗しました。authorize でログインし直してください",
-    403: "この掲示板へのアクセス権がないか、アプリのスコープ設定が不足しています",
+    // 実測: 存在しない boardId も 404 ではなく ACCESS_DENIED で返る (docs/api-notes.md 5)
+    403: "この掲示板へのアクセス権がないか、掲示板/投稿の ID が誤っているか、アプリのスコープ設定が不足しています",
     404: "指定された掲示板または投稿が見つかりません。ID を確認してください",
     429: "アクセスが集中しています。しばらく待ってからもう一度お試しください",
   };

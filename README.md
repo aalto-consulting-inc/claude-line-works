@@ -30,7 +30,8 @@ LINE WORKS の掲示板(Board)を Claude / Claude Cowork から読み取り、�
 | `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
 | `list_posts` | 掲示板の投稿一覧 |
 | `get_post` | 投稿本文(Markdown 変換) |
-| `list_comments` | 投稿のコメント一覧 |
+
+※ 読み取り対象は投稿本文まで(コメントは対象外)。
 
 `board-digest` スキルが同梱されており、掲示板の要約・情報探索の依頼を適切なツール呼び出しに展開します。
 
