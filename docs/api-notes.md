@@ -57,12 +57,13 @@ export CODE='(コピーした code)'
 ## 2. トークン交換
 
 ```sh
+# 値に特殊文字が入っても壊れないよう --data-urlencode を使う(-d は値をエンコードしない)
 curl -sS -X POST https://auth.worksmobile.com/oauth2/v2.0/token \
-  -d grant_type=authorization_code \
-  -d code="$CODE" \
-  -d client_id="$CID" \
-  -d client_secret="$SECRET" \
-  -d redirect_uri="$REDIRECT"
+  --data-urlencode grant_type=authorization_code \
+  --data-urlencode code="$CODE" \
+  --data-urlencode client_id="$CID" \
+  --data-urlencode client_secret="$SECRET" \
+  --data-urlencode redirect_uri="$REDIRECT"
 ```
 
 **実行結果**(トークン値はマスクして構造だけ残す):
@@ -83,11 +84,12 @@ export RT='(refresh_token)'
 ## 3. リフレッシュ検証
 
 ```sh
+# 事前に $RT が正しく入っているか確認: echo "len=${#RT} head=${RT:0:12}..."
 curl -sS -X POST https://auth.worksmobile.com/oauth2/v2.0/token \
-  -d grant_type=refresh_token \
-  -d refresh_token="$RT" \
-  -d client_id="$CID" \
-  -d client_secret="$SECRET"
+  --data-urlencode grant_type=refresh_token \
+  --data-urlencode refresh_token="$RT" \
+  --data-urlencode client_id="$CID" \
+  --data-urlencode client_secret="$SECRET"
 ```
 
 **実行結果**:
@@ -188,6 +190,8 @@ curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/9
 ```
 
 - [ ] エラー JSON の構造(`code` / `description` などのフィールド名):
+- [x] 認証エンドポイント(auth.worksmobile.com)のエラー形式: `{"returnCode":"99","returnMessage":"UnexpectedError"}` — リクエスト不正時の汎用エラー(2026-07-08 実測)。Board API 側とは形式が異なる点に注意
+- メモ: Rotation ON の場合、リフレッシュ成功で古い refresh_token は失効する。認可のやり直しでも旧 RT が無効になる場合がある
 - [ ] レート制限(429)のヘッダー(`Retry-After` の有無)— 発生したら記録:
 
 ## 6. 完了条件
