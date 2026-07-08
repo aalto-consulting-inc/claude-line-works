@@ -99,7 +99,7 @@ curl -sS -X POST https://auth.worksmobile.com/oauth2/v2.0/token \
 ```
 
 - [x] 新しい access_token が返るか: **はい**(2026-07-08 実測)。ただし `-d` だと `{"returnCode":"99","returnMessage":"UnexpectedError"}` になる。**`--data-urlencode` が必須**(トークン内の特殊文字が原因)
-- [ ] refresh_token は同じものが使い回しか、新しく発行されるか(ローテーションの有無): (未記録 — リフレッシュ応答に refresh_token が含まれていたか要確認)
+- [x] refresh_token のローテーション: **あり**(2026-07-08 実測。リフレッシュ応答に**新しい refresh_token が含まれる** = 古い RT は失効)。実装は応答に新 RT があれば保存して追従する(oauth.ts forceRefresh、テスト済み)
 
 ## 4. Board API 検証
 
