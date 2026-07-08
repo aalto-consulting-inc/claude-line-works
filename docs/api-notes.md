@@ -146,18 +146,38 @@ curl -sS -H "Authorization: Bearer $AT" \
 ```
 
 > **パスは公式リファレンス(docs/reference/board-post-list.pdf)で確認済み**: `GET /v1.0/boards/{boardId}/posts`。
-> `count` は既定 20・最大 40。続きは `cursor`(URL エンコード必要 → curl では `--data-urlencode` 相当の注意)。
-> 2026-07-08 の初回実行で `Api not exists` が返ったのは BOARD_ID 未設定によるパス崩れの可能性が高い。
+> `count` は既定 20・最大 40。続きは `cursor`。
+> **注意(2026-07-08 実測)**: 初回の `{"code":"NOT_FOUND","description":"Api not exists"}` の原因は、コマンド末尾に紛れ込んだ `~` が URL に連結され `count=10~` になっていたこと。URL が 1 文字でも崩れるとこのエラーになる。
 
-**実行結果**:
+**実行結果**(2026-07-08 実測。縮約・投稿者名はマスク):
 
 ```json
-(ここに貼る)
+{
+  "posts": [
+    {
+      "boardId": 4020000001470191001,
+      "postId": 4090000000182400175,
+      "title": "令和8年度_月毎棚卸し6月分",
+      "readCount": 33,
+      "commentCount": 0,
+      "fileCount": 1,
+      "createdTime": "2026-06-29T13:24:20+09:00",
+      "modifiedTime": "2026-06-29T13:24:20+09:00",
+      "userId": "bcf319e7-****",
+      "userName": "(投稿者名)",
+      "mustReadPeriod": { "startDate": null, "endDate": null },
+      "isMustRead": false,
+      "resourceLocation": null,
+      "isUnread": true
+    }
+  ]
+}
 ```
 
-- [ ] 投稿の ID フィールド名:
-- [ ] 一覧に本文は含まれるか(要約のみか):
-- [ ] 日時フィールドの形式(ISO8601? タイムゾーン?):
+- [x] 投稿の ID フィールド名: `postId`(**19 桁の JSON 数値** — boardId 同様に parseJsonSafe で文字列化して扱う)
+- [x] 一覧に本文は含まれるか: **含まれない**(タイトル+メタデータのみ)。本文は `GET .../posts/{postId}` で個別取得(現設計どおり)
+- [x] 日時フィールドの形式: ISO8601、タイムゾーン付き(`+09:00`)
+- [x] 追加フィールド: `userId` / `userName` / `isUnread` / `resourceLocation`(リファレンスの投稿取得スキーマとほぼ同じ)
 
 ### 4.3 投稿本文
 
