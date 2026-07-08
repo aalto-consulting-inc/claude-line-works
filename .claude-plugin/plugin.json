@@ -1,0 +1,32 @@
+{
+  "name": "line-works",
+  "displayName": "LINE WORKS 掲示板",
+  "version": "0.1.0",
+  "description": "LINE WORKS の掲示板(Board)を Claude から読み取り、要約・検索・活用できるようにする読み取り専用プラグイン",
+  "author": {
+    "name": "Aalto Consulting Inc."
+  },
+  "repository": "https://github.com/aalto-consulting-inc/claude-line-works",
+  "license": "MIT",
+  "keywords": ["line-works", "board", "掲示板", "japan"],
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "description": "LINE WORKS Developer Console で発行された Client ID(管理者から共有されます)"
+    },
+    "client_secret": {
+      "type": "string",
+      "title": "Client Secret",
+      "description": "LINE WORKS Developer Console で発行された Client Secret(管理者から共有されます)",
+      "sensitive": true
+    },
+    "callback_port": {
+      "type": "string",
+      "title": "コールバックポート",
+      "description": "ログイン認可時に使うローカルポート。通常は変更不要",
+      "default": "9876"
+    }
+  }
+}

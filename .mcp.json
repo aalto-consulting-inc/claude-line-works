@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "line-works": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.js"],
+      "env": {
+        "LW_CLIENT_ID": "${user_config.client_id}",
+        "LW_CLIENT_SECRET": "${user_config.client_secret}",
+        "LW_CALLBACK_PORT": "${user_config.callback_port}",
+        "LW_DATA_DIR": "${CLAUDE_PLUGIN_DATA}"
+      }
+    }
+  }
+}

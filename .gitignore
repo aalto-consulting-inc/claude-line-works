@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+
+# ローカル検証で生成される認証情報・トークンは絶対にコミットしない
+tokens.json
+.env
+.env.*

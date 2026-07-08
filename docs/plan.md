@@ -159,14 +159,14 @@ claude-line-works/
 
 - [ ] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認
 - [ ] Phase 0: curl で 認可→トークン→掲示板一覧→投稿→コメント→リフレッシュ を一巡、api-notes.md 記録
-- [ ] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green
-- [ ] Phase 1: esbuild バンドル(dist/server.js)
-- [ ] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過
+- [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green(2026-07-08)
+- [x] Phase 1: esbuild バンドル(dist/server.js)(2026-07-08)
+- [x] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過(2026-07-08)
 - [ ] Phase 2: CI(3 OS マトリクス)green
 - [ ] Phase 3: CLI 手動 E2E(macOS)完了・verification.md 記録
 - [ ] Phase 3: CLI 手動 E2E(Windows)完了
 - [ ] Phase 3: Cowork 実機検証(コールバック可否確認・フォールバック検証)完了
-- [ ] Phase 4: setup-admin / setup-user / README 完成
+- [x] Phase 4: setup-admin / setup-user / README 完成(2026-07-08)
 - [ ] Phase 4: リポジトリ public 化・v0.1.0 タグ
 - [ ] Phase 4: パイロット導入 → フィードバック反映 → v1.0.0
 
