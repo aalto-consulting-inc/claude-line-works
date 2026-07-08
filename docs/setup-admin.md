@@ -7,13 +7,18 @@ LINE WORKS 掲示板プラグインを社内で使えるようにするための
 
 1. [LINE WORKS Developer Console](https://dev.worksmobile.com/) に**テナント管理者**でログイン
 2. 「アプリの新規追加」からクライアントアプリを作成(名前の例: `Claude 掲示板連携`)
+   - アプリの種類を聞かれたら **「認証アプリ」を選択**してください
+     - **認証アプリ** = LINE WORKS API を呼び出すためのアプリ。OAuth でアクセストークンを取得して掲示板 API にアクセスする、このプラグインの用途はこちら
+     - **プロビジョニングアプリ** = ID プロビジョニング(SCIM)連携用。Okta / Entra ID などからのアカウント自動同期のためのもので、**今回は使いません**
 3. **OAuth Scopes** で掲示板の読み取りスコープ(`board.read`)を追加
    - 読み取り以外のスコープは付与しないでください(このプラグインは閲覧専用です)
 4. **Redirect URL** に次を登録:
    ```
    http://localhost:9876/callback
    ```
-5. 発行された **Client ID** と **Client Secret** を控える
+5. **Refresh Token Rotation** の設定がある場合は **ON を推奨**(OFF でも動作します)
+   - ON にするとトークン更新のたびに新しい Refresh Token に切り替わり、漏えい時のリスクが下がります。プラグインはどちらの設定でも自動で追従します
+6. 発行された **Client ID** と **Client Secret** を控える
 
 ## 2. 利用者に共有する
 

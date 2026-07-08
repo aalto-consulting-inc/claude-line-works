@@ -11,6 +11,7 @@
 
 1. https://dev.worksmobile.com/ (Developer Console) にテナント管理者でログイン
 2. 「アプリの新規追加」でクライアントアプリを作成
+   - アプリの種類は **「認証アプリ」** を選ぶ(「プロビジョニングアプリ」は SCIM 連携用で今回は使わない)
 3. **OAuth Scopes** に掲示板の読み取りスコープを追加
    - [ ] コンソールに表示された正確なスコープ名を記録: `____________`(想定: `board.read` または `board`)
 4. **Redirect URL** に `http://localhost:9876/callback` を登録
