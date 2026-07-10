@@ -10,6 +10,7 @@
 | | | macOS / Claude Code CLI | 未実施 |
 | | | Windows / Claude Code CLI | 未実施 |
 | | | Cowork | 未実施 |
+| | | Claude Desktop チャット | 未実施 |
 
 ## 準備
 
