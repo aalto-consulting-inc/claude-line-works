@@ -150,6 +150,7 @@ claude-line-works/
 2. **Board API の正確なパス/スコープ名**: Phase 0 の curl 検証で確定。実装では `client.ts` に隔離し修正コストを局所化
 3. **90 日ごとの再認可**: リフレッシュトークン失効時に非エンジニアが迷わないよう、再認可の案内メッセージとドキュメントを丁寧に作る
 4. **ブラウザ版 claude.ai チャットは対象外**(2026-07-08 整理): ローカル stdio MCP サーバーを実行できないため現方式では動かない(Claude Code / Claude Desktop チャットは対応)。ブラウザ版でも使いたい要望が出た場合は、リモート MCP サーバーのホスティング(Cloudflare Workers 等+MCP 標準 OAuth)を将来フェーズとして検討する
+5. **Client Secret の配布構造**(2026-09-20 確認): LINE WORKS OAuth は PKCE 非対応・client_secret required(公式ドキュメント確認済)。各利用者の PC で動く本プラグインは実質 Public Client だが、Secret を組織内で共有する構造にせざるを得ない。防御層(LINE WORKS ログイン必須・localhost 固定・読み取り専用スコープ・組織テナント紐付け)で単独漏えい時の実害は限定的。運用上の担保として `docs/setup-admin.md` の「Client Secret の取扱いポリシー」で組織内配布に限定・漏えい時の再発行手順を明示する
 
 ## 設計書と進捗管理の運用
 

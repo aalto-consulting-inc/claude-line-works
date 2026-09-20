@@ -247,8 +247,9 @@ export class OAuthManager {
 
   async saveTokens(tokens: TokenSet): Promise<void> {
     this.tokens = tokens;
-    await fs.mkdir(this.opts.dataDir, { recursive: true });
-    await fs.writeFile(this.tokenFile, JSON.stringify(tokens), "utf8");
+    await fs.mkdir(this.opts.dataDir, { recursive: true, mode: 0o700 });
+    await fs.writeFile(this.tokenFile, JSON.stringify(tokens), { encoding: "utf8", mode: 0o600 });
+    await fs.chmod(this.tokenFile, 0o600).catch(() => undefined);
   }
 
   async hasTokens(): Promise<boolean> {

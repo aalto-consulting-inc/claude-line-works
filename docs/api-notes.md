@@ -226,6 +226,16 @@ curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/9
 - メモ: Rotation ON の場合、リフレッシュ成功で古い refresh_token は失効する。認可のやり直しでも旧 RT が無効になる場合がある
 - [ ] レート制限(429)のヘッダー(`Retry-After` の有無)— 発生したら記録:
 
+### 4.4.1 PKCE / Public Client 対応 — 非対応を確認(2026-09-20)
+
+公式ドキュメント確認:
+
+- `https://developers.worksmobile.com/jp/docs/auth`: 認証方式は User Account(OAuth 2.0 Authorization Code Grant + OIDC)と Service Account(JWT ベース)の 2 種のみ。PKCE の記述なし
+- `https://developers.worksmobile.com/jp/docs/auth-oauth`: トークン交換の必須パラメータに `client_secret` が明記(required)。`code_challenge` / `code_verifier` / `code_challenge_method` の記述なし
+- LINE Login(別プロダクト)は PKCE 対応するが、LINE WORKS は別基盤
+
+結論: **PKCE 非対応・client_secret 必須**。このため各利用者の PC で動くプラグインは Client Secret を組織内で共有する構造にならざるを得ない。運用上の担保は `docs/setup-admin.md` の Client Secret 取扱いポリシー参照。
+
 ### 4.5 全掲示板横断の最新投稿 — 判明事項(2026-09-20 実測)
 
 `GET /boards/recent/posts` は「LINE WORKS 上で **利用者が『新規投稿通知 ON』に設定している掲示板** の新着投稿」を返す(利用者相対フィルタ)。通知設定していない場合は掲示板が多数あっても常に空を返す。

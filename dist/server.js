@@ -38745,8 +38745,9 @@ var OAuthManager = class {
   }
   async saveTokens(tokens) {
     this.tokens = tokens;
-    await import_node_fs.promises.mkdir(this.opts.dataDir, { recursive: true });
-    await import_node_fs.promises.writeFile(this.tokenFile, JSON.stringify(tokens), "utf8");
+    await import_node_fs.promises.mkdir(this.opts.dataDir, { recursive: true, mode: 448 });
+    await import_node_fs.promises.writeFile(this.tokenFile, JSON.stringify(tokens), { encoding: "utf8", mode: 384 });
+    await import_node_fs.promises.chmod(this.tokenFile, 384).catch(() => void 0);
   }
   async hasTokens() {
     return await this.loadTokens() !== null;
@@ -38967,7 +38968,7 @@ ${authorizeUrl}
   );
   server.tool(
     "list_recent_posts",
-    "\u5168\u63B2\u793A\u677F\u3092\u6A2A\u65AD\u3057\u3066\u6700\u65B0\u306E\u6295\u7A3F\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B\u3002\u63B2\u793A\u677F\u3092\u7279\u5B9A\u305B\u305A\u300C\u6700\u8FD1\u306E\u304A\u77E5\u3089\u305B\u300D\u300C\u4ECA\u9031\u306E\u6295\u7A3F\u300D\u3092\u307E\u3068\u3081\u305F\u3044\u3068\u304D\u306B\u6700\u521D\u306B\u4F7F\u3046",
+    "\u5229\u7528\u8005\u304C\u300E\u65B0\u898F\u6295\u7A3F\u901A\u77E5 ON\u300F\u306B\u8A2D\u5B9A\u3057\u3066\u3044\u308B\u63B2\u793A\u677F\u304B\u3089\u306E\u65B0\u7740\u6295\u7A3F\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B(LINE WORKS \u306E /boards/recent/posts\u3002\u901A\u77E5\u8A2D\u5B9A\u3057\u3066\u3044\u306A\u3044\u5834\u5408\u306F\u7A7A\u306B\u306A\u308B)\u3002\u7A7A\u3060\u3063\u305F\u3089 list_boards \u2192 list_posts \u3067\u500B\u5225\u306B\u53D6\u5F97\u3059\u308B\u3053\u3068",
     { ...paginationParams },
     async ({ count, cursor }) => run(deps, async () => json(await deps.client.listRecentPosts({ count, cursor })))
   );
