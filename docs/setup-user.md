@@ -3,7 +3,7 @@
 Claude から LINE WORKS の掲示板を読めるようにする手順です。**プログラミングの知識は不要**です。
 事前に、管理者から **Client ID** と **Client Secret** を受け取っておいてください。
 
-対応環境: macOS / Windows(Claude Code、Claude Desktop、Claude Cowork)
+対応環境: macOS / Windows(Claude Code、Claude Desktop)
 
 ## 1. プラグインをインストールする
 
@@ -14,7 +14,7 @@ Claude から LINE WORKS の掲示板を読めるようにする手順です。*
 /plugin install line-works@aalto-plugins
 ```
 
-### Claude Cowork / Desktop の場合
+### Claude Desktop の場合
 
 プラグイン(拡張機能)メニューからマーケットプレイス
 `aalto-consulting-inc/claude-line-works` を追加し、「LINE WORKS 掲示板」をインストールします。

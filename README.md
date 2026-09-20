@@ -1,6 +1,6 @@
 # LINE WORKS 掲示板プラグイン for Claude
 
-LINE WORKS の掲示板(Board)を Claude / Claude Cowork から読み取り、要約・検索・活用できるようにする**読み取り専用**プラグインです。
+LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要約・検索・活用できるようにする**読み取り専用**プラグインです。
 
 > 「総務の掲示板の今週の投稿を要約して」「経費精算のお知らせを探して」— そんな依頼が Claude にそのまま通ります。
 
@@ -21,7 +21,7 @@ LINE WORKS の掲示板(Board)を Claude / Claude Cowork から読み取り、�
 graph LR
     subgraph PC["利用者の PC(macOS / Windows)"]
         User(["利用者"])
-        Claude["Claude Code / Cowork / Desktop<br/>+ board-digest スキル"]
+        Claude["Claude Code / Desktop<br/>+ board-digest スキル"]
         MCP["line-works プラグイン<br/>MCP サーバー(Node 18+)<br/>dist/server.js"]
         Token[("トークン保存<br/>CLAUDE_PLUGIN_DATA")]
         Browser["ブラウザ"]
@@ -76,16 +76,17 @@ sequenceDiagram
     C-->>U: 要約を回答
 ```
 
-コールバックが成立しない環境(Cowork サンドボックス等)では、リダイレクト先 URL を利用者がコピーして Claude に貼り付けるフォールバック(`authorize` の `code_or_url`)で同じ処理が行われます。
+ローカルコールバックが成立しない環境では、リダイレクト先 URL を利用者がコピーして Claude に貼り付けるフォールバック(`authorize` の `code_or_url`)で同じ処理が行われます。
 
 ### 対応環境
 
 | 環境 | 対応 | 備考 |
 |---|---|---|
 | Claude Code(CLI / IDE) | ✅ | Node 18+ が必要 |
-| Claude Cowork | ✅ | サンドボックス内で Node を実行。認可はコールバック不成立時に手動貼り付け |
-| Claude Desktop のチャット | ✅(見込み) | ローカル MCP を実行可能。Node 18+ が必要 |
+| Claude Desktop のチャット | ✅ | ローカル MCP を実行可能。Node 18+ が必要 |
 | claude.ai(ブラウザ版チャット) | ❌ | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
+
+※ 実機検証は macOS(Claude Code CLI + Claude Desktop チャット)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
 
 ## インストール
 

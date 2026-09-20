@@ -2,16 +2,16 @@
 
 ## Context
 
-- **目的**: LINE WORKS を利用中のクライアント企業(利用者は非エンジニア)が、Claude Cowork から掲示板(Board)の情報を取得・活用して業務を効率化できる Claude プラグインを作る。
+- **目的**: LINE WORKS を利用中のクライアント企業(利用者は非エンジニア)が、Claude Desktop / Claude Code から掲示板(Board)の情報を取得・活用して業務を効率化できる Claude プラグインを作る。
 - **リポジトリ**: `aalto-consulting-inc/claude-line-works`(現在は空)。このリポジトリ自体を公開プラグインマーケットプレイスにする。
 - **決定事項**(ユーザー確認済み):
   - 機能範囲は**読み取り専用**(掲示板一覧・投稿一覧・投稿本文の取得)。**コメント取得はスコープ外**(2026-07-08 決定)
   - 認証は**ユーザー OAuth(認可コードフロー)のみ**。Service Account は対応しない。本人の閲覧権限どおりに掲示板が見える
-  - OAuth の実現方式は**ローカルコールバック**(MCP サーバーが一時的に localhost で code を受け取る)。Cowork で不成立の場合は手動コード貼り付けにフォールバック
+  - OAuth の実現方式は**ローカルコールバック**(MCP サーバーが一時的に localhost で code を受け取る)。ローカルコールバックが成立しない環境向けに手動コード貼り付けフォールバックを備える
   - **開発の最初のステップは curl による API 動作検証**(コードを書く前に OAuth フローと Board API を確定させる)
   - 配布は**このリポジトリの公開マーケットプレイス化**
 - **設計上の制約**:
-  - Cowork では hooks・サブエージェントが動作しないため、**MCP サーバー + スキルのみ**で構成する
+  - Claude Desktop チャット等では hooks・サブエージェントが動作しないため、**MCP サーバー + スキルのみ**で構成する
   - 非エンジニアが使うため、セットアップは「マーケットプレイス追加 → インストール → Client ID/Secret 入力 → ブラウザでログイン認可」で完結させる(利用者にビルド作業を要求しない)
   - **利用者環境は macOS / Windows の両対応**。OS 依存の実装(シェルスクリプト、パス区切り、ブラウザ起動コマンド)を避け、Node 標準 API のみで完結させる
 
@@ -85,7 +85,7 @@ claude-line-works/
 2. `authorize` ツール: localhost の固定ポート(userConfig で変更可、既定 9876)で一時 HTTP サーバーを起動し、認可 URL を返す → **Claude が利用者に URL を提示し、利用者がクリック**(サンドボックスからのブラウザ自動起動に依存しない設計)
 3. 利用者がブラウザでログイン・同意 → localhost コールバックで code 受領 → トークン交換 → 一時サーバー停止
 4. トークンは `${CLAUDE_PLUGIN_DATA}` 配下に保存(access 24h / refresh 90 日)。失効前に自動リフレッシュ。リフレッシュ失効(90 日)時は再認可を案内
-5. **フォールバック**: `authorize` ツールに `code` 引数を持たせ、コールバックが成立しない環境(Cowork サンドボックス等)ではリダイレクト先 URL から code を手動コピーして Claude に貼り付ければ同じ処理が走る。state/PKCE 検証を実装
+5. **フォールバック**: `authorize` ツールに `code` 引数を持たせ、ローカルコールバックが成立しない環境ではリダイレクト先 URL から code を手動コピーして Claude に貼り付ければ同じ処理が走る。state/PKCE 検証を実装
 6. CSRF 対策として state、可能なら PKCE(LINE WORKS が対応するか Phase 0 で確認)
 
 ### MCP ツール(読み取り専用)
@@ -103,7 +103,7 @@ claude-line-works/
 ### 配布(.claude-plugin/marketplace.json)
 
 - リポジトリ直下をマーケットプレイス化: plugins に `{"name": "line-works", "source": "./"}`
-- 導入手順: `/plugin marketplace add aalto-consulting-inc/claude-line-works` → `/plugin install line-works@...`(Cowork は UI から同等操作)
+- 導入手順: `/plugin marketplace add aalto-consulting-inc/claude-line-works` → `/plugin install line-works@...`(Claude Desktop は UI から同等操作)
 - リポジトリは public 化が必要。認証情報・トークンは一切コミットしない
 - `plugin.json` の `version` をセマンティックバージョン運用(バンプ時のみ利用者に更新配布)
 
@@ -124,33 +124,32 @@ claude-line-works/
 - `plugin.json`(userConfig: client_id, client_secret[sensitive], callback_port)、`.mcp.json`、`skills/board-digest/SKILL.md`、`marketplace.json`
 - `claude plugin validate . --strict` をローカルと CI で実行
 
-### Phase 3: 検証(実 API E2E)
-- CI をマトリクス化(ubuntu / macos / windows-latest)してユニットテストとバンドル起動確認(`node dist/server.js` がツール一覧を返すスモーク)を全 OS で実行
-- `claude --plugin-dir .` でローカル起動し手動 E2E(**macOS と Windows の実機それぞれで実施**):
-  - 正常系: インストール → userConfig 入力 → `authorize`(ブラウザ認可)→ 掲示板一覧 → 投稿 → 本文 → コメント
+### Phase 3: 検証(実 API E2E)— 公開前の必須ゲート(macOS ローカル手動のみ)
+- `claude --plugin-dir .` でローカル起動し手動 E2E(**macOS 実機で実施**。Windows 実機は用意できないため公開前検証の対象外):
+  - 正常系: インストール → userConfig 入力 → `authorize`(ブラウザ認可)→ 掲示板一覧 → 投稿一覧 → 本文
   - 認証系: トークン失効後の自動リフレッシュ、リフレッシュ失効時の再認可案内、不正な code、state 不一致
   - フォールバック系: コールバック不成立を想定した code 手動貼り付け
   - コンテンツ系: 日本語・長文・HTML 本文(get_post の Markdown 出力が崩れないこと)・投稿多数のページネーション
-- **Cowork 実機検証**: マーケットプレイス追加 → インストール → ローカルコールバックが成立するか確認(不成立なら手動貼り付けフローで一巡)→ 非エンジニア想定シナリオ(「総務の掲示板の今週の投稿を要約して」等)
+- **Claude Desktop チャット検証(macOS)**: マーケットプレイス追加 → インストール → 認可 → 非エンジニア想定シナリオ(「総務の掲示板の今週の投稿を要約して」等)を一巡
 - 結果を `docs/verification.md` に記録
 
-### Phase 4: ドキュメント整備 + 公開
+### Phase 4: ドキュメント整備 + 公開(+ 公開後の CI 整備)
 - `docs/setup-admin.md` / `docs/setup-user.md`(スクリーンショット前提の日本語手順)/ README
 - リポジトリ public 化 → `v0.1.0` タグ → クライアント 1 社パイロット → フィードバック反映 → `v1.0.0`
+- **(オプショナル・公開後)** CI ワークフローを整備し、ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + バンドル起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行。公開前のリリース判定基準には含めない
 
 ## 検証計画まとめ
 
-- **自動(CI・毎 PR)**: vitest ユニット + サーバー起動スモークを ubuntu / macos / windows の3 OS マトリクスで実行、TypeScript 型チェック、`claude plugin validate --strict`、dist 鮮度チェック、secret スキャン
-- **手動(リリース前)**: `docs/verification.md` の E2E チェックリストを Claude Code CLI(macOS・Windows 両実機)と Cowork の両方で実施
+- **公開前(必須ゲート)**: `docs/verification.md` の E2E チェックリストを **macOS の Claude Code CLI + macOS の Claude Desktop チャット** の 2 レーンで実施(ローカル手動のみ)。Windows 実機検証は行わない(公開後にフィードバックがあれば対応)。CI はまだ整えない
+- **公開後(オプショナル)**: CI ワークフローを整備し、vitest ユニット + サーバー起動スモークを ubuntu / macos / windows の 3 OS マトリクスで毎 PR 実行。TypeScript 型チェック、`claude plugin validate --strict`、dist 鮮度チェック、secret スキャンも同時に実行
 - **セキュリティ確認**: client_secret が sensitive として平文保存されないこと、トークンファイルのパーミッション、ログにトークン・code を出さないこと、state/PKCE によるコールバック検証
 
 ## リスク・未確定事項
 
 1. **localhost リダイレクト URI の可否**: Developer Console が `http://localhost` を許可しない場合、ローカルコールバック方式が成立しない → Phase 0 の最初で確認。不可なら手動コード貼り付けを主フローに昇格
-2. **Cowork サンドボックスでのコールバック**: 利用者のブラウザから Cowork 実行環境の localhost に届かない可能性が高い → 手動貼り付けフォールバックを最初から実装しておく(設計済み)
-3. **Board API の正確なパス/スコープ名**: Phase 0 の curl 検証で確定。実装では `client.ts` に隔離し修正コストを局所化
-4. **90 日ごとの再認可**: リフレッシュトークン失効時に非エンジニアが迷わないよう、再認可の案内メッセージとドキュメントを丁寧に作る
-5. **ブラウザ版 claude.ai チャットは対象外**(2026-07-08 整理): ローカル stdio MCP サーバーを実行できないため現方式では動かない(Claude Code / Cowork / Desktop チャットは対応)。ブラウザ版でも使いたい要望が出た場合は、リモート MCP サーバーのホスティング(Cloudflare Workers 等+MCP 標準 OAuth)を将来フェーズとして検討する
+2. **Board API の正確なパス/スコープ名**: Phase 0 の curl 検証で確定。実装では `client.ts` に隔離し修正コストを局所化
+3. **90 日ごとの再認可**: リフレッシュトークン失効時に非エンジニアが迷わないよう、再認可の案内メッセージとドキュメントを丁寧に作る
+4. **ブラウザ版 claude.ai チャットは対象外**(2026-07-08 整理): ローカル stdio MCP サーバーを実行できないため現方式では動かない(Claude Code / Claude Desktop チャットは対応)。ブラウザ版でも使いたい要望が出た場合は、リモート MCP サーバーのホスティング(Cloudflare Workers 等+MCP 標準 OAuth)を将来フェーズとして検討する
 
 ## 設計書と進捗管理の運用
 
@@ -160,17 +159,19 @@ claude-line-works/
 
 ### 進捗チェックリスト(docs/plan.md 末尾に含める)
 
+**公開前必須ゲート = Phase 3 のローカル手動 E2E のみ。CI 整備は公開後・オプショナル。**
+
 - [x] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認(2026-07-08: 登録可、認可〜リフレッシュ成功)
 - [x] Phase 0: curl で 認可→トークン→掲示板一覧→投稿一覧→本文→リフレッシュ→エラー形式 を一巡、api-notes.md 記録(2026-07-08 完了。コメントはスコープ外)
 - [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green(2026-07-08)
 - [x] Phase 1: esbuild バンドル(dist/server.js)(2026-07-08)
 - [x] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過(2026-07-08)
-- [ ] Phase 2: CI(3 OS マトリクス)green(※ 2026-07-08 ユーザー指示により本セッションではスキップ。次セッション以降)
-- [ ] Phase 3: CLI 手動 E2E(macOS)完了・verification.md 記録
-- [ ] Phase 3: CLI 手動 E2E(Windows)完了
-- [ ] Phase 3: Cowork 実機検証(コールバック可否確認・フォールバック検証)完了
+- [ ] **Phase 3(公開前必須)**: CLI 手動 E2E(macOS)完了・verification.md 記録
+- [ ] **Phase 3(公開前必須)**: Claude Desktop チャット検証(macOS)完了(認可・掲示板一覧・投稿要約シナリオ)
+- [ ] Phase 3(公開後・任意): Windows 実機検証(フィードバック起点で対応)
 - [x] Phase 4: setup-admin / setup-user / README 完成(2026-07-08)
 - [ ] Phase 4: リポジトリ public 化・v0.1.0 タグ
+- [ ] Phase 4(公開後・オプショナル): CI(3 OS マトリクス)green
 - [ ] Phase 4: パイロット導入 → フィードバック反映 → v1.0.0
 
 ## このセッションで着手する順
