@@ -94,7 +94,7 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
 
   server.tool(
     "list_recent_posts",
-    "全掲示板を横断して最新の投稿一覧を取得する。掲示板を特定せず「最近のお知らせ」「今週の投稿」をまとめたいときに最初に使う",
+    "利用者が『新規投稿通知 ON』に設定している掲示板からの新着投稿一覧を取得する(LINE WORKS の /boards/recent/posts。通知設定していない場合は空になる)。空だったら list_boards → list_posts で個別に取得すること",
     { ...paginationParams },
     async ({ count, cursor }) =>
       run(deps, async () => json(await deps.client.listRecentPosts({ count, cursor })))

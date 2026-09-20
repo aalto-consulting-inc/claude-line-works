@@ -6,3 +6,6 @@ node_modules/
 tokens.json
 .env
 .env.*
+
+# ユーザーローカルの Claude Code 設定(permissions.allow 等)
+.claude/settings.local.json

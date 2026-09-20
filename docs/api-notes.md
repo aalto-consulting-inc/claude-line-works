@@ -226,6 +226,20 @@ curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/9
 - メモ: Rotation ON の場合、リフレッシュ成功で古い refresh_token は失効する。認可のやり直しでも旧 RT が無効になる場合がある
 - [ ] レート制限(429)のヘッダー(`Retry-After` の有無)— 発生したら記録:
 
+### 4.5 全掲示板横断の最新投稿 — 判明事項(2026-09-20 実測)
+
+`GET /boards/recent/posts` は「LINE WORKS 上で **利用者が『新規投稿通知 ON』に設定している掲示板** の新着投稿」を返す(利用者相対フィルタ)。通知設定していない場合は掲示板が多数あっても常に空を返す。
+
+```sh
+curl -sS -H "Authorization: Bearer $AT" "https://www.worksapis.com/v1.0/boards/recent/posts?count=40"
+# → {"posts":[],"responseMetaData":{"nextCursor":null}}
+```
+
+- LINE WORKS Web の「最近の投稿」タブでも同条件で 0 件だったため、API の挙動は Web と一致(不具合ではない)
+- スコープは `board.read` で十分(`board` に上げても挙動変わらず)
+- `list_recent_posts` ツールはこの実態に合わせて説明文を更新済み(通知未設定なら空、その場合は `list_boards` → `list_posts` へ誘導)
+- 参考: `/boards/my/posts`(自分が投稿したもの)は返る、`/boards/must/posts`(必読)も同様に利用者相対
+
 ## 参考: 公式ドキュメント(PDF 保存版あり)
 
 **公式リファレンスの PDF 保存版を `docs/reference/` に置いた**(2026-07-08 取得)。詳細は docs/reference/README.md。
