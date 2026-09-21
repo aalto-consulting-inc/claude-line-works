@@ -141,9 +141,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 ## TODO(公開後)
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
-- [ ] **対応機能の拡張** — 掲示板以外(トーク / Bot、カレンダー等)の対応可否をフィードバックを見ながら検討
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
-- [ ] **CI 整備**(オプショナル)— ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + サーバー起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行
 
 ## 参考リンク
 
