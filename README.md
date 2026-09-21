@@ -12,6 +12,35 @@ LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要
 - **非エンジニアでも導入可能** — ビルド不要。インストールして ID を貼り付け、ブラウザでログインするだけ
 - **macOS / Windows 対応** — Node.js 18 以降のみが前提です
 
+## 対応環境と配布形式
+
+| 環境 | 対応 | 配布形式 | 備考 |
+|---|---|---|---|
+| Claude Desktop | ✅ | `.mcpb`(Anthropic 公式の Desktop 拡張機能) | **Free プランでも利用可能** |
+| Claude Code(CLI / IDE) | ✅ | プラグイン(このリポジトリのマーケットプレイス経由) | Claude Code は Pro / Max / Team / Enterprise プラン向け |
+| claude.ai(ブラウザ版チャット) | ❌ | — | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
+
+※ 実機検証は macOS(Claude Code CLI + Claude Desktop)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
+
+## インストール
+
+- **管理者の方**(最初の一度だけ必要な設定): [docs/setup-admin.md](docs/setup-admin.md)
+- **利用者の方**(Claude Desktop / Claude Code CLI 両対応の手順): [docs/setup-user.md](docs/setup-user.md)
+
+## 提供ツール
+
+| ツール | 説明 |
+|---|---|
+| `authorize` | LINE WORKS へのログイン認可 |
+| `list_boards` | 掲示板の一覧 |
+| `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
+| `list_posts` | 掲示板の投稿一覧 |
+| `get_post` | 投稿本文(Markdown 変換) |
+
+※ 読み取り対象は投稿本文まで(コメントは対象外)。
+
+`board-digest` スキルが同梱されており、掲示板の要約・情報探索の依頼を適切なツール呼び出しに展開します。
+
 ## システム構成
 
 ### アーキテクチャ
@@ -78,35 +107,6 @@ sequenceDiagram
 ```
 
 ローカルコールバックが成立しない環境では、リダイレクト先 URL を利用者がコピーして Claude に貼り付けるフォールバック(`authorize` の `code_or_url`)で同じ処理が行われます。
-
-### 対応環境と配布形式
-
-| 環境 | 対応 | 配布形式 | 備考 |
-|---|---|---|---|
-| Claude Desktop | ✅ | `.mcpb`(Anthropic 公式の Desktop 拡張機能) | Releases ページから `.mcpb` をダウンロード → 設定 → 拡張機能から追加。Node.js のインストール不要(Desktop がランタイム提供)。**Free プランでも利用可能** |
-| Claude Code(CLI / IDE) | ✅ | プラグイン(このリポジトリのマーケットプレイス経由) | `/plugin marketplace add aalto-consulting-inc/claude-line-works` → `/plugin install line-works@aalto-plugins`。Claude Code は Pro / Max / Team / Enterprise プラン向け |
-| claude.ai(ブラウザ版チャット) | ❌ | — | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
-
-※ 実機検証は macOS(Claude Code CLI + Claude Desktop)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
-
-## インストール
-
-- **管理者の方**(最初の一度だけ必要な設定): [docs/setup-admin.md](docs/setup-admin.md)
-- **利用者の方**(Claude Desktop / Claude Code CLI 両対応の手順): [docs/setup-user.md](docs/setup-user.md)
-
-## 提供ツール
-
-| ツール | 説明 |
-|---|---|
-| `authorize` | LINE WORKS へのログイン認可 |
-| `list_boards` | 掲示板の一覧 |
-| `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
-| `list_posts` | 掲示板の投稿一覧 |
-| `get_post` | 投稿本文(Markdown 変換) |
-
-※ 読み取り対象は投稿本文まで(コメントは対象外)。
-
-`board-digest` スキルが同梱されており、掲示板の要約・情報探索の依頼を適切なツール呼び出しに展開します。
 
 ## 開発
 
