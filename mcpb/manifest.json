@@ -4,8 +4,8 @@
   "name": "line-works",
   "display_name": "LINE WORKS",
   "version": "0.2.0",
-  "description": "LINE WORKS を Claude から利用する MCP プラグイン(現状の対応は掲示板の読み取りのみ)",
-  "long_description": "LINE WORKS を Claude Desktop から利用するための MCP 拡張機能です。現在の対応範囲は掲示板(Board)の読み取りのみで、掲示板の投稿を検索・要約できます。読み取り専用のため、投稿・編集・削除はできません。各利用者は自分の LINE WORKS アカウントでログインし、本人が閲覧できる範囲だけが対象になります。トークやカレンダーなど他の機能は今後の対応予定です。",
+  "description": "LINE WORKS を Claude から利用する MCP プラグイン",
+  "long_description": "LINE WORKS を Claude Desktop から利用するための MCP 拡張機能です。各利用者は自分の LINE WORKS アカウントでログインし、本人が閲覧できる範囲だけが対象になります。",
   "author": {
     "name": "Aalto Consulting Inc."
   },
