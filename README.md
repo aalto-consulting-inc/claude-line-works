@@ -41,15 +41,20 @@ LINE WORKS を Claude(Code / Desktop)から利用するための MCP プラグ�
 
 ## 提供ツール
 
-認可用の `authorize` 以外は、現状の対応機能である掲示板(Board)向けのツールです。
+### 共通
 
-| ツール | 対象機能 | 説明 |
-|---|---|---|
-| `authorize` | 共通 | LINE WORKS へのログイン認可 |
-| `list_boards` | 掲示板 | 掲示板の一覧 |
-| `list_recent_posts` | 掲示板 | 全掲示板を横断した最新投稿一覧 |
-| `list_posts` | 掲示板 | 掲示板の投稿一覧 |
-| `get_post` | 掲示板 | 投稿本文(Markdown 変換) |
+| ツール | 説明 |
+|---|---|
+| `authorize` | LINE WORKS へのログイン認可 |
+
+### 掲示板(Board)
+
+| ツール | 説明 |
+|---|---|
+| `list_boards` | 掲示板の一覧 |
+| `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
+| `list_posts` | 掲示板の投稿一覧 |
+| `get_post` | 投稿本文(Markdown 変換) |
 
 ※ 読み取り対象は投稿本文まで(コメントは対象外)。
 
