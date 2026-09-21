@@ -1,0 +1,68 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "line-works-board",
+  "display_name": "LINE WORKS 掲示板",
+  "version": "0.1.0",
+  "description": "LINE WORKS の掲示板(Board)を Claude から読み取り、要約・検索・活用できるようにする読み取り専用プラグイン",
+  "long_description": "LINE WORKS を利用中の組織のメンバーが、Claude Desktop から掲示板の投稿を検索・要約できるようにします。読み取り専用で、投稿・編集・削除はできません。各利用者は自分の LINE WORKS アカウントでログインし、本人が閲覧できる掲示板だけが対象になります。",
+  "author": {
+    "name": "Aalto Consulting Inc."
+  },
+  "license": "MIT",
+  "keywords": ["line-works", "board", "掲示板", "japan"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aalto-consulting-inc/claude-line-works"
+  },
+  "homepage": "https://github.com/aalto-consulting-inc/claude-line-works",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "LW_CLIENT_ID": "${user_config.client_id}",
+        "LW_CLIENT_SECRET": "${user_config.client_secret}",
+        "LW_CALLBACK_PORT": "${user_config.callback_port}",
+        "LW_DATA_DIR": "${HOME}/.line-works-mcp"
+      }
+    }
+  },
+  "user_config": {
+    "client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "description": "LINE WORKS Developer Console で発行された Client ID(管理者から共有されます)",
+      "required": true
+    },
+    "client_secret": {
+      "type": "string",
+      "title": "Client Secret",
+      "description": "LINE WORKS Developer Console で発行された Client Secret(管理者から共有されます)。この値は macOS のキーチェーン等の安全な保管領域に暗号化保存されます",
+      "sensitive": true,
+      "required": true
+    },
+    "callback_port": {
+      "type": "string",
+      "title": "コールバックポート",
+      "description": "ログイン認可時に使うローカルポート。通常は変更不要(空欄のままで既定 9876 が使われます)",
+      "default": "9876"
+    }
+  },
+  "tools": [
+    { "name": "authorize", "description": "LINE WORKS へのログイン認可(初回・トークン失効時)" },
+    { "name": "list_boards", "description": "アクセス可能な掲示板の一覧" },
+    { "name": "list_recent_posts", "description": "新規投稿通知 ON の掲示板からの新着投稿一覧" },
+    { "name": "list_posts", "description": "特定掲示板の投稿一覧(ページネーション対応)" },
+    { "name": "get_post", "description": "投稿本文の取得(HTML → Markdown 変換)" }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18"
+    }
+  }
+}

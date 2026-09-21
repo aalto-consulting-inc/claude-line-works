@@ -78,17 +78,25 @@ sequenceDiagram
 
 ローカルコールバックが成立しない環境では、リダイレクト先 URL を利用者がコピーして Claude に貼り付けるフォールバック(`authorize` の `code_or_url`)で同じ処理が行われます。
 
-### 対応環境
+### 対応環境と配布形式
 
-| 環境 | 対応 | 備考 |
-|---|---|---|
-| Claude Code(CLI / IDE) | ✅ | Node 18+ が必要 |
-| Claude Desktop のチャット | ✅ | ローカル MCP を実行可能。Node 18+ が必要 |
-| claude.ai(ブラウザ版チャット) | ❌ | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
+| 環境 | 対応 | 配布形式 | 備考 |
+|---|---|---|---|
+| Claude Desktop | ✅ | `.mcpb`(Anthropic 公式の Desktop 拡張機能) | Releases ページから `.mcpb` をダウンロード → 設定 → 拡張機能から追加。Node.js のインストール不要(Desktop がランタイム提供)。**Free プランでも利用可能** |
+| Claude Code(CLI / IDE) | ✅ | プラグイン(このリポジトリのマーケットプレイス経由) | `/plugin marketplace add aalto-consulting-inc/claude-line-works` → `/plugin install line-works@aalto-plugins`。Claude Code は Pro / Max / Team / Enterprise プラン向け |
+| claude.ai(ブラウザ版チャット) | ❌ | — | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
 
-※ 実機検証は macOS(Claude Code CLI + Claude Desktop チャット)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
+※ 実機検証は macOS(Claude Code CLI + Claude Desktop)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
 
 ## インストール
+
+### Claude Desktop 利用者(推奨・Free プラン可)
+
+1. [Releases](https://github.com/aalto-consulting-inc/claude-line-works/releases) から最新の `line-works-board-x.y.z.mcpb` をダウンロード
+2. Claude Desktop の 設定 → 拡張機能 → 拡張機能をインストール → `.mcpb` を選択
+3. Client ID / Client Secret を入力して完了
+
+### Claude Code CLI 利用者
 
 ```
 /plugin marketplace add aalto-consulting-inc/claude-line-works

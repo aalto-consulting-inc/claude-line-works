@@ -14,10 +14,22 @@ Claude から LINE WORKS の掲示板を読めるようにする手順です。*
 /plugin install line-works@aalto-plugins
 ```
 
-### Claude Desktop の場合
+### Claude Desktop の場合(拡張機能ファイル `.mcpb` 経由)
 
-プラグイン(拡張機能)メニューからマーケットプレイス
-`aalto-consulting-inc/claude-line-works` を追加し、「LINE WORKS 掲示板」をインストールします。
+Claude Code CLI が無くても、Claude Desktop 単体で完結します。
+
+#### 手順
+
+1. **`.mcpb` ファイルをダウンロード**
+   - GitHub リポジトリの Releases ページ https://github.com/aalto-consulting-inc/claude-line-works/releases から、最新版の `line-works-board-x.y.z.mcpb` をダウンロード
+2. **Claude Desktop を起動** → **設定** → **拡張機能** → **拡張機能をインストール** → ダウンロードした `.mcpb` を選択(またはドラッグ&ドロップ)
+3. インストール画面で **Client ID / Client Secret / コールバックポート** を入力
+   - Client ID: 管理者から受け取った値
+   - Client Secret: 管理者から受け取った値(**macOS のキーチェーン等の安全な保管領域に暗号化保存**されます)
+   - コールバックポート: 空欄のままで OK(自動的に 9876 が使われます)
+4. インストール完了 → Claude Desktop のチャットが `line-works` MCP サーバーに自動接続
+
+> Claude Desktop の拡張機能(`.mcpb`)は Anthropic 公式のパッケージ形式です。単一ファイルで MCP サーバーが同梱されているため、Node.js を別途インストールする必要はありません(Claude Desktop がランタイムを提供)。
 
 ## 2. Client ID と Client Secret を入力する
 

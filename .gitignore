@@ -9,3 +9,6 @@ tokens.json
 
 # ユーザーローカルの Claude Code 設定(permissions.allow 等)
 .claude/settings.local.json
+
+# MCPB ビルド成果物(GitHub Release のアセットとして配布)
+build/

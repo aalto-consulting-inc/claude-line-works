@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=../dist/server.js"
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=cjs --outfile=../dist/server.js",
+    "build:mcpb": "npm run build && node ../scripts/build-mcpb.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

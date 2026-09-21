@@ -1,10 +1,35 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { ServerConfig } from "./config.js";
 import { missingConfig } from "./config.js";
 import { NeedsAuthorizationError, type OAuthManager } from "./oauth.js";
 import { WorksApiError, type WorksApiClient } from "./client.js";
 import { htmlToMarkdown } from "./html.js";
+
+/** デフォルトブラウザで URL を開く。OS 別に open / start / xdg-open を使い分ける。失敗しても投げない。 */
+function openInBrowser(url: string): boolean {
+  try {
+    let command: string;
+    let args: string[];
+    if (process.platform === "darwin") {
+      command = "open";
+      args = [url];
+    } else if (process.platform === "win32") {
+      command = "cmd";
+      args = ["/c", "start", "", url];
+    } else {
+      command = "xdg-open";
+      args = [url];
+    }
+    const child = spawn(command, args, { detached: true, stdio: "ignore" });
+    child.unref();
+    child.on("error", () => undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface ToolDeps {
   config: ServerConfig;
@@ -75,11 +100,22 @@ export function registerTools(server: McpServer, deps: ToolDeps): void {
           return text("認可が完了しました。list_boards などで掲示板を読み取れます。");
         }
         const { authorizeUrl } = await deps.oauth.startAuthorization();
+        const opened = openInBrowser(authorizeUrl);
         return text(
-          `次の URL をブラウザで開き、LINE WORKS にログインして認可してください:\n\n${authorizeUrl}\n\n` +
-            `認可が完了すると「認可が完了しました」というページが表示されます。その後、掲示板の読み取りができます。\n` +
+          `【LLM への指示】この応答は Claude Desktop 等の UI で折り畳まれる場合があるため、` +
+            `下記の認可 URL を必ずアシスタントの本文にも Markdown リンクとして書き出し、` +
+            `利用者がクリックできる状態で提示してください。\n\n` +
+            `認可 URL: ${authorizeUrl}\n` +
+            `既定ブラウザを自動起動: ${opened ? "成功(利用者のブラウザで認可ページが開いた想定)" : "失敗(利用者にリンクを提示して手動で開いてもらう)"}\n\n` +
+            `【利用者向けの案内テンプレート(そのまま出力してよい)】\n` +
+            (opened
+              ? `LINE WORKS のログイン画面をブラウザで開きました。ログインして「許可」を押してください。もし開かなかった場合は次のリンクからどうぞ:\n` +
+                `[LINE WORKS にログインして認可する](${authorizeUrl})\n`
+              : `認可が必要です。次のリンクをクリックしてブラウザで LINE WORKS にログインし、「許可」を押してください:\n` +
+                `[LINE WORKS にログインして認可する](${authorizeUrl})\n`) +
+            `完了すると「認可が完了しました」というページが表示されます。\n` +
             `もしブラウザにエラーページ(接続できません等)が表示された場合は、そのページの URL をアドレスバーからコピーし、` +
-            `authorize ツールの code_or_url に貼り付けて再実行してください。`
+            `「この URL で認可を完了して: (貼り付け)」と伝えてください(内部的に authorize ツールの code_or_url に渡されます)。`
         );
       })
   );
