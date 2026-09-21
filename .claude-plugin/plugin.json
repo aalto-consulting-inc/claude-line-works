@@ -1,7 +1,7 @@
 {
   "name": "line-works",
   "displayName": "LINE WORKS",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LINE WORKS を Claude から利用する MCP プラグイン",
   "author": {
     "name": "Aalto Consulting Inc."

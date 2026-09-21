@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "line-works",
   "display_name": "LINE WORKS",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LINE WORKS を Claude から利用する MCP プラグイン",
   "long_description": "LINE WORKS を Claude Desktop から利用するための MCP 拡張機能です。各利用者は自分の LINE WORKS アカウントでログインし、本人が閲覧できる範囲だけが対象になります。",
   "author": {

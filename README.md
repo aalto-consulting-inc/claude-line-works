@@ -9,7 +9,7 @@ LINE WORKS を Claude(Code / Desktop)から利用するための MCP プラグ�
 
 | LINE WORKS の機能 | 対応状況 | 備考 |
 |---|---|---|
-| 掲示板(Board) | ✅ 読み取りのみ | 掲示板一覧・投稿一覧・投稿本文の読み取りに対応。投稿のコメントの読み取りは未対応) |
+| 掲示板(Board) | ✅ 読み取りのみ | 掲示板一覧・投稿一覧・投稿本文の読み取りに対応。投稿のコメントの読み取りは未対応 |
 | トーク / Bot | ❌ 未対応 | 将来検討 |
 | カレンダー | ❌ 未対応 | 将来検討 |
 | 組織・メンバー情報 | ❌ 未対応 | 将来検討 |
@@ -139,6 +139,15 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 - 手動 E2E 検証チェックリスト: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
 - Claude Desktop 用 MCPB(`.mcpb`)をビルド: `cd server && npm run build:mcpb`(`build/line-works.mcpb` が出力される)
+
+### リリース
+
+1. **バージョンを上げる** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)
+2. **バンドルを更新してコミット** — `cd server && npm run build`(`dist/server.js` はコミット対象。未更新だと CI が落ちる)
+3. **main にマージ** — この時点で Claude Code(マーケットプレイス経由)の利用者に反映される
+4. **タグを push** — `git tag v<x.y.z> && git push origin v<x.y.z>`
+
+タグ push で [`.github/workflows/release.yml`](.github/workflows/release.yml) が動き、バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → **下書きの** GitHub Release を作成し `line-works.mcpb` を添付する。内容を確認して手動で publish すると、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す。
 
 ## TODO(公開後)
 

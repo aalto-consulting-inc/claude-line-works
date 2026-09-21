@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    name: build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # 3 つのマニフェストの version とタグがずれたままリリースするのを防ぐ
+      - name: Check versions match the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json; do
+            v=$(node -p "require('./$f').version")
+            if [ "$v" != "$tag" ]; then
+              echo "::error file=$f::version ($v) がタグ ($tag) と一致しません"
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+        working-directory: server
+      - run: npm run typecheck
+        working-directory: server
+      - run: npm test
+        working-directory: server
+
+      - name: Build MCPB
+        run: npm run build:mcpb
+        working-directory: server
+
+      - name: Check dist/server.js is up to date
+        run: git diff --exit-code -- dist
+        # 失敗した場合: server/ の変更後に `npm run build` を実行して dist/ をコミットし直す
+
+      - name: Smoke test (MCP tools/list)
+        run: node scripts/smoke.mjs
+
+      # files の glob はリポジトリルート基準(working_directory の既定値)
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: build/line-works.mcpb
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          draft: true
