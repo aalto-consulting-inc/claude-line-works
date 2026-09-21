@@ -9,19 +9,19 @@
 
 | 日付 | 実施者 | 環境 (OS / Claude) | 結果 |
 |---|---|---|---|
-| 2026-09-20 | Murano | macOS / Claude Code CLI | 一部完了(下記チェック参照) |
-| | | macOS / Claude Desktop チャット | 未実施 |
+| 2026-09-20 | Murano | macOS / Claude Code CLI(マーケットプレイス経由) | ✅ 完了(下記チェック参照。認可 → 掲示板一覧 → 投稿一覧 → 本文 → 自動リフレッシュを一巡) |
+| 2026-09-21 | Murano | macOS / Claude Desktop(MCPB / v0.2.0) | ✅ 完了(下記チェック参照。userConfig UI・認可の自動ブラウザ起動・掲示板一覧まで確認) |
 
 ## 準備
 
-- [ ] テスト用掲示板に投稿がある: 日本語・長文・HTML 装飾(見出し/リスト/リンク/表)
-- [ ] `claude --plugin-dir .` でプラグインを読み込んで起動(Claude Code CLI 検証時)
-- [ ] Claude Desktop 検証時はマーケットプレイス追加 → インストール(検証ブランチを指定可)
+- [x] テスト用掲示板に投稿がある: 日本語・長文・HTML 装飾(業務報告掲示板の日報が該当)
+- [x] Claude Code CLI 検証時はマーケットプレイス経由 `/plugin install line-works@aalto-plugins` で起動
+- [x] Claude Desktop 検証時は Releases から `line-works-board.mcpb` を DL → 設定 → 拡張機能 からインストール
 
 ## 正常系
 
-- [x] インストール直後、userConfig(Client ID / Secret)の入力が求められる(2026-09-20: marketplace 経由 `/plugin install` で入力プロンプト表示。callback_port の入力欄が空欄で表示される点は description に「空欄で既定 9876」を追記して補足)
-- [ ] `authorize` 実行 → URL 提示 → ブラウザでログイン → 「認可が完了しました」ページが表示される(Phase 0 curl で認可〜トークン交換は確認済み。今回は既存トークン利用のため authorize フロー自体は再現せず)
+- [x] インストール直後、userConfig(Client ID / Secret)の入力が求められる(2026-09-20 CLI: marketplace 経由 `/plugin install` で入力プロンプト表示。callback_port の入力欄が空欄で表示される点は description に「空欄で既定 9876」を追記して補足 / 2026-09-21 Desktop MCPB: 拡張機能インストール時に同等の userConfig 入力 UI が表示、Client Secret は sensitive: true でキーチェーン保存)
+- [x] `authorize` 実行 → URL 提示 → ブラウザでログイン → 「認可が完了しました」ページが表示される(2026-09-21 Desktop MCPB: authorize ツールが既定ブラウザを自動起動、URL は本文にも Markdown リンクで露出、localhost:9876 コールバック成立、tokens.json 保存を確認。CLI 側は Phase 0 curl で認可〜トークン交換を確認済)
 - [x] 認可後、`list_boards` で掲示板一覧が返る(20 件取得、nextCursor null)
 - [x] `list_posts` で投稿一覧が返る(日本語タイトルが化けない、cursor 継続あり)
 - [x] `get_post` の本文が Markdown で返る(2026-09-20: 短文と長文(生産管理課の日報)の両方で確認。長文は LLM 側で中間ファイル分割して処理する挙動あり — バグではないがサイズ大の投稿があることをスキル/ドキュメントで意識すべき)
@@ -49,12 +49,13 @@
 
 ## セキュリティ系
 
-- [ ] client_secret が settings.json などに平文で保存されていない(キーチェーン保存)
-- [ ] ツールのエラー出力・ログに access_token / refresh_token / code が含まれない
-- [ ] リポジトリ内に認証情報が含まれない
+- [x] client_secret が settings.json などに平文で保存されていない(2026-09-20 確認: CLI プラグインでは `~/.claude/settings.json` に client_id のみ平文、client_secret は macOS キーチェーンに `Claude Code-credentials-*` として保存 / 2026-09-21 Desktop MCPB でも sensitive: true 指定によりキーチェーン保存)
+- [x] ツールのエラー出力・ログに access_token / refresh_token / code が含まれない(tokens.ts / oauth.ts でエラー整形時にトークン・code を出さない実装を確認、ユニットテストでもカバー)
+- [x] リポジトリ内に認証情報が含まれない(2026-09-20 コミット履歴を grep で走査、client_secret / accessToken / refreshToken / Client ID いずれも検出なし。`.gitignore` に tokens.json / .env / .claude/settings.local.json を明記)
+- [x] tokens.json のパーミッションが 600、データディレクトリが 700(2026-09-20 oauth.ts saveTokens で mode 明示、実ファイルに chmod 適用済み)
 
 ## OS 別確認(macOS)
 
-- [ ] `node dist/server.js` がそのまま起動する(追加インストールなし)
-- [ ] 認可のコールバック(127.0.0.1)が成立する
-- [ ] トークン保存先(CLAUDE_PLUGIN_DATA)に書き込みできる
+- [x] `node dist/server.js` がそのまま起動する(2026-09-20: `node scripts/smoke.mjs` で 5 ツール認識確認 / 2026-09-21 Desktop MCPB: Desktop 内蔵の Node ランタイムで起動、Node 追加インストール不要)
+- [x] 認可のコールバック(127.0.0.1)が成立する(2026-09-20 CLI + 2026-09-21 Desktop MCPB とも成立)
+- [x] トークン保存先に書き込みできる(CLI: `~/.claude/plugins/data/line-works-aalto-plugins/tokens.json` / Desktop MCPB: `~/.line-works-mcp/tokens.json`。両方 600 で保存)

@@ -116,7 +116,7 @@ claude-line-works/
 - **クロスプラットフォーム方針(macOS / Windows 両対応)**:
   - MCP サーバー起動は `.mcp.json` の `node dist/server.js` のみ(シェルスクリプト・bash ラッパーを使わない)
   - パスは `path.join` と `${CLAUDE_PLUGIN_DATA}` 経由のみ。ホームディレクトリ直書きやパーミッション chmod 依存をしない(Windows では chmod が効かないため、トークンはユーザープロファイル配下の CLAUDE_PLUGIN_DATA 保存で足りると割り切る)
-  - ブラウザ自動起動はしない(`open` / `start` の OS 分岐を避け、URL 提示 → 利用者クリックに統一 — OAuth フロー設計と整合)
+  - ブラウザ自動起動は authorize ツール内で対応(2026-09-21: 非エンジニア UX のため方針変更。macOS `open` / Windows `start` / Linux `xdg-open` を実装、失敗時は URL テキストにフォールバック。既存の「URL 提示 → 利用者クリック」も並行して機能)
   - localhost コールバックは `127.0.0.1` バインド(Windows ファイアウォールのプロンプト回避のためループバック限定)
   - npm scripts は cross-platform(rimraf 等、`rm -rf` 直書き禁止)
 
@@ -125,17 +125,18 @@ claude-line-works/
 - `claude plugin validate . --strict` をローカルと CI で実行
 
 ### Phase 3: 検証(実 API E2E)— 公開前の必須ゲート(macOS ローカル手動のみ)
-- `claude --plugin-dir .` でローカル起動し手動 E2E(**macOS 実機で実施**。Windows 実機は用意できないため公開前検証の対象外):
-  - 正常系: インストール → userConfig 入力 → `authorize`(ブラウザ認可)→ 掲示板一覧 → 投稿一覧 → 本文
+- Claude Code CLI 側(macOS): マーケットプレイス経由 `/plugin install line-works@aalto-plugins` で手動 E2E
+  - 正常系: userConfig 入力 → `authorize`(ブラウザ認可)→ 掲示板一覧 → 投稿一覧 → 本文
   - 認証系: トークン失効後の自動リフレッシュ、リフレッシュ失効時の再認可案内、不正な code、state 不一致
   - フォールバック系: コールバック不成立を想定した code 手動貼り付け
   - コンテンツ系: 日本語・長文・HTML 本文(get_post の Markdown 出力が崩れないこと)・投稿多数のページネーション
-- **Claude Desktop チャット検証(macOS)**: マーケットプレイス追加 → インストール → 認可 → 非エンジニア想定シナリオ(「総務の掲示板の今週の投稿を要約して」等)を一巡
+- **Claude Desktop(macOS)**: MCPB(`.mcpb`)を Desktop の 設定 → 拡張機能 からインストール → userConfig 入力 → `authorize`(既定ブラウザ自動起動)→ 掲示板一覧 → 非エンジニア想定シナリオ を一巡
+- Windows 実機は用意できないため公開前検証の対象外(公開後にフィードバック起点で対応)
 - 結果を `docs/verification.md` に記録
 
 ### Phase 4: ドキュメント整備 + 公開(+ 公開後の CI 整備)
-- `docs/setup-admin.md` / `docs/setup-user.md`(スクリーンショット前提の日本語手順)/ README
-- リポジトリ public 化 → `v0.1.0` タグ → クライアント 1 社パイロット → フィードバック反映 → `v1.0.0`
+- `docs/setup-admin.md` / `docs/setup-user.md`(Desktop MCPB / CLI 両導線)/ README(対応環境表・インストール節はセットアップガイドへのリンクに集約)
+- リポジトリ public 化 → `v0.1.0` タグ(初期)→ Desktop MCPB 対応で `v0.2.0` にマイナー版アップ → GitHub Releases に `.mcpb` を latest アセットとして配布 → クライアント 1 社パイロット → フィードバック反映 → `v1.0.0`
 - **(オプショナル・公開後)** CI ワークフローを整備し、ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + バンドル起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行。公開前のリリース判定基準には含めない
 
 ## 検証計画まとめ
@@ -150,6 +151,7 @@ claude-line-works/
 2. **Board API の正確なパス/スコープ名**: Phase 0 の curl 検証で確定。実装では `client.ts` に隔離し修正コストを局所化
 3. **90 日ごとの再認可**: リフレッシュトークン失効時に非エンジニアが迷わないよう、再認可の案内メッセージとドキュメントを丁寧に作る
 4. **ブラウザ版 claude.ai チャットは対象外**(2026-07-08 整理): ローカル stdio MCP サーバーを実行できないため現方式では動かない(Claude Code / Claude Desktop チャットは対応)。ブラウザ版でも使いたい要望が出た場合は、リモート MCP サーバーのホスティング(Cloudflare Workers 等+MCP 標準 OAuth)を将来フェーズとして検討する
+6. **Claude Code CLI は Pro 以上のプラン限定**(2026-09-21 整理): Claude Code の利用は Pro / Max / Team / Enterprise 契約に含まれ、Free プランでは提供されない。Free プランの利用者に届けるため Claude Desktop 向けに MCPB(`.mcpb`)配布を追加。Desktop はプラグイン runtime が MCP サーバーを起動しないため、MCPB(公式 Desktop 拡張機能フォーマット)経由で MCP サーバーを配布している。両導線は同じ `dist/server.js` を共有
 5. **Client Secret の配布構造**(2026-09-20 確認): LINE WORKS OAuth は PKCE 非対応・client_secret required(公式ドキュメント確認済)。各利用者の PC で動く本プラグインは実質 Public Client だが、Secret を組織内で共有する構造にせざるを得ない。防御層(LINE WORKS ログイン必須・localhost 固定・読み取り専用スコープ・組織テナント紐付け)で単独漏えい時の実害は限定的。運用上の担保として `docs/setup-admin.md` の「Client Secret の取扱いポリシー」で組織内配布に限定・漏えい時の再発行手順を明示する
 
 ## 設計書と進捗管理の運用
@@ -164,22 +166,19 @@ claude-line-works/
 
 - [x] Phase 0: Developer Console アプリ登録(人手)/ localhost リダイレクト可否確認(2026-07-08: 登録可、認可〜リフレッシュ成功)
 - [x] Phase 0: curl で 認可→トークン→掲示板一覧→投稿一覧→本文→リフレッシュ→エラー形式 を一巡、api-notes.md 記録(2026-07-08 完了。コメントはスコープ外)
-- [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト green(2026-07-08)
-- [x] Phase 1: esbuild バンドル(dist/server.js)(2026-07-08)
+- [x] Phase 0: LINE WORKS の PKCE 非対応・client_secret required を公式ドキュメントで確認、リスク項に記録(2026-09-20)
+- [x] Phase 1: MCP サーバー実装(oauth / client / html / tools)+ ユニットテスト 38 件 green
+- [x] Phase 1: esbuild バンドル(dist/server.js)
+- [x] Phase 1: tokens.json のパーミッションを 600(dir 700)に強化(2026-09-20)
+- [x] Phase 1: authorize 時のブラウザ自動起動(macOS/Windows/Linux)を実装(2026-09-21)
 - [x] Phase 2: plugin.json / .mcp.json / marketplace.json / スキル作成、plugin validate --strict 通過(2026-07-08)
-- [ ] **Phase 3(公開前必須)**: CLI 手動 E2E(macOS)完了・verification.md 記録
-- [ ] **Phase 3(公開前必須)**: Claude Desktop チャット検証(macOS)完了(認可・掲示板一覧・投稿要約シナリオ)
+- [x] Phase 2: MCPB(Claude Desktop 向け拡張フォーマット)対応 — mcpb/manifest.json / scripts/build-mcpb.mjs(2026-09-21)
+- [x] **Phase 3(公開前必須)**: CLI 手動 E2E(macOS)完了・verification.md 記録(2026-09-20)
+- [x] **Phase 3(公開前必須)**: Claude Desktop MCPB 検証(macOS)完了 — userConfig UI・自動ブラウザ起動・掲示板一覧まで確認(2026-09-21)
 - [ ] Phase 3(公開後・任意): Windows 実機検証(フィードバック起点で対応)
-- [x] Phase 4: setup-admin / setup-user / README 完成(2026-07-08)
-- [ ] Phase 4: リポジトリ public 化・v0.1.0 タグ
+- [x] Phase 4: setup-admin / setup-user / README 完成(README は Desktop / CLI 両導線をセットアップガイドへのリンクに集約、setup-user は MCPB / CLI 両導線を記載)
+- [x] Phase 4: リポジトリ public 化(2026-09-21)
+- [x] Phase 4: `v0.1.0` タグ(2026-09-21)/ MCPB 対応で `v0.2.0` に版アップ、`.mcpb` を GitHub Releases に latest として公開(2026-09-21)
 - [ ] Phase 4(公開後・オプショナル): CI(3 OS マトリクス)green
 - [ ] Phase 4: パイロット導入 → フィードバック反映 → v1.0.0
 
-## このセッションで着手する順
-
-1. **この設計書を `docs/plan.md`(進捗チェックリスト付き)としてコミット** — 最初のコミットにする
-2. Phase 0 の curl 検証キット: `docs/api-notes.md` テンプレと認可 URL 組み立て・トークン交換の curl 手順書 — 実際の curl 実行は Client ID/Secret 発行後(ユーザー側作業待ち)
-3. `server/` scaffold + oauth.ts + client.ts + html.ts + tools.ts + テスト(api-notes 確定までは既知仕様で実装し、確定後に突き合わせ)
-4. `plugin.json` / `.mcp.json` / `marketplace.json` / スキル
-5. CI ワークフロー、docs、README
-6. 各ステップ完了ごとに `docs/plan.md` のチェックリストを更新してコミット。ブランチ `claude/line-works-plugin-plan-a87xgu` へプッシュ → draft PR
