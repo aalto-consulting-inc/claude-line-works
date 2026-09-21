@@ -3,8 +3,6 @@
 Claude から LINE WORKS を使えるようにする手順です。**プログラミングの知識は不要**です。
 事前に、管理者から **Client ID** と **Client Secret** を受け取っておいてください。
 
-> **現在できること**: 対応している LINE WORKS の機能は**掲示板(Board)の読み取り**だけです(トーク・カレンダー等は未対応)。
-
 対応環境: macOS / Windows(Claude Code、Claude Desktop)
 
 ## 1. プラグインをインストールする
