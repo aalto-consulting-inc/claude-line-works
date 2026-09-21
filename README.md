@@ -126,7 +126,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 ## TODO(公開後)
 
-- [ ] **パイロット導入** — クライアント 1 社で運用開始 → フィードバック反映 → `v1.0.0`
+- [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
 - [ ] **CI 整備**(オプショナル)— ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + サーバー起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行
 
