@@ -92,7 +92,7 @@ sequenceDiagram
 
 ### Claude Desktop 利用者(推奨・Free プラン可)
 
-1. [Releases](https://github.com/aalto-consulting-inc/claude-line-works/releases) から最新の `line-works-board-x.y.z.mcpb` をダウンロード
+1. [最新版の `line-works-board.mcpb` をダウンロード](https://github.com/aalto-consulting-inc/claude-line-works/releases/latest/download/line-works-board.mcpb)
 2. Claude Desktop の 設定 → 拡張機能 → 拡張機能をインストール → `.mcpb` を選択
 3. Client ID / Client Secret を入力して完了
 
