@@ -24,8 +24,8 @@ LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要
 
 ## インストール
 
-- **管理者の方**(最初の一度だけ必要な設定): [docs/setup-admin.md](docs/setup-admin.md)
-- **利用者の方**(Claude Desktop / Claude Code CLI 両対応の手順): [docs/setup-user.md](docs/setup-user.md)
+- **管理者向け**: [docs/setup-admin.md](docs/setup-admin.md) : 最初に設定が必要
+- **利用者向け**: [docs/setup-user.md](docs/setup-user.md) : Claude Desktop / Claude Code CLI 両対応の手順
 
 ## 提供ツール
 
