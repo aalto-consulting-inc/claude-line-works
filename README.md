@@ -90,21 +90,8 @@ sequenceDiagram
 
 ## インストール
 
-### Claude Desktop 利用者(推奨・Free プラン可)
-
-1. [最新版の `line-works-board.mcpb` をダウンロード](https://github.com/aalto-consulting-inc/claude-line-works/releases/latest/download/line-works-board.mcpb)
-2. Claude Desktop の 設定 → 拡張機能 → 拡張機能をインストール → `.mcpb` を選択
-3. Client ID / Client Secret を入力して完了
-
-### Claude Code CLI 利用者
-
-```
-/plugin marketplace add aalto-consulting-inc/claude-line-works
-/plugin install line-works@aalto-plugins
-```
-
-- 管理者の方(最初の一度だけ必要な設定): [docs/setup-admin.md](docs/setup-admin.md)
-- 利用者の方: [docs/setup-user.md](docs/setup-user.md)
+- **管理者の方**(最初の一度だけ必要な設定): [docs/setup-admin.md](docs/setup-admin.md)
+- **利用者の方**(Claude Desktop / Claude Code CLI 両対応の手順): [docs/setup-user.md](docs/setup-user.md)
 
 ## 提供ツール
 
