@@ -8,7 +8,7 @@
     {
       "name": "line-works",
       "source": "./",
-      "description": "LINE WORKS の掲示板(Board)を Claude から読み取り、要約・検索・活用できるようにする読み取り専用プラグイン"
+      "description": "LINE WORKS を Claude から利用する MCP プラグイン(現状の対応は掲示板の読み取りのみ)"
     }
   ]
 }

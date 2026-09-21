@@ -35,7 +35,7 @@ cpSync(manifest, path.join(staging, "manifest.json"));
 console.log(`staging directory: ${staging}`);
 
 // mcpb pack を実行
-const result = spawnSync("npx", ["-y", "@anthropic-ai/mcpb", "pack", staging, path.join(outDir, "line-works-board.mcpb")], {
+const result = spawnSync("npx", ["-y", "@anthropic-ai/mcpb", "pack", staging, path.join(outDir, "line-works.mcpb")], {
   stdio: "inherit",
 });
 
@@ -44,4 +44,4 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
-console.log(`\nMCPB を作成しました: ${path.join(outDir, "line-works-board.mcpb")}`);
+console.log(`\nMCPB を作成しました: ${path.join(outDir, "line-works.mcpb")}`);

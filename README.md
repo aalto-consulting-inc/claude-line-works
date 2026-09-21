@@ -1,14 +1,26 @@
-# LINE WORKS 掲示板プラグイン for Claude
+# LINE WORKS MCP プラグイン for Claude
 
-LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要約・検索・活用できるようにする**読み取り専用**プラグインです。
+LINE WORKS を Claude(Code / Desktop)から利用するための MCP プラグインです。
+**現在の対応範囲は掲示板(Board)の読み取りのみ**で、今後ほかの LINE WORKS 機能を順次追加していきます。
 
 > [!TIP]
 > 「総務の掲示板の今週の投稿を要約して」「経費精算のお知らせを探して」— そんな依頼が Claude にそのまま通ります。
 
+## 対応機能
+
+| LINE WORKS の機能 | 対応状況 | 備考 |
+|---|---|---|
+| 掲示板(Board) | ✅ 読み取りのみ | 掲示板一覧・投稿一覧・投稿本文。投稿・編集・削除は非対応(コメントも対象外) |
+| トーク / Bot | ❌ 未対応 | 将来検討 |
+| カレンダー | ❌ 未対応 | 将来検討 |
+| 組織・メンバー情報 | ❌ 未対応 | 将来検討 |
+
+要求する OAuth スコープも現在は掲示板の読み取り(`board.read`)のみです。機能追加時はスコープの追加が必要になります。
+
 ## 特長
 
-- **読み取り専用** — 投稿・編集・削除は一切できないため、誤操作の心配がありません
-- **本人の権限どおり** — 各利用者が自分の LINE WORKS アカウントでログインし、本人が閲覧できる掲示板だけが見えます(ユーザー OAuth)
+- **読み取り専用** — 現時点のツールはすべて読み取りのみ。投稿・編集・削除は一切できないため、誤操作の心配がありません
+- **本人の権限どおり** — 各利用者が自分の LINE WORKS アカウントでログインし、本人がアクセスできる範囲だけが見えます(ユーザー OAuth)
 - **非エンジニアでも導入可能** — ビルド不要。インストールして ID を貼り付け、ブラウザでログインするだけ
 - **macOS / Windows 対応**
 
@@ -29,17 +41,19 @@ LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要
 
 ## 提供ツール
 
-| ツール | 説明 |
-|---|---|
-| `authorize` | LINE WORKS へのログイン認可 |
-| `list_boards` | 掲示板の一覧 |
-| `list_recent_posts` | 全掲示板を横断した最新投稿一覧 |
-| `list_posts` | 掲示板の投稿一覧 |
-| `get_post` | 投稿本文(Markdown 変換) |
+認可用の `authorize` 以外は、現状の対応機能である掲示板(Board)向けのツールです。
+
+| ツール | 対象機能 | 説明 |
+|---|---|---|
+| `authorize` | 共通 | LINE WORKS へのログイン認可 |
+| `list_boards` | 掲示板 | 掲示板の一覧 |
+| `list_recent_posts` | 掲示板 | 全掲示板を横断した最新投稿一覧 |
+| `list_posts` | 掲示板 | 掲示板の投稿一覧 |
+| `get_post` | 掲示板 | 投稿本文(Markdown 変換) |
 
 ※ 読み取り対象は投稿本文まで(コメントは対象外)。
 
-`board-digest` スキルが同梱されており、掲示板の要約・情報探索の依頼を適切なツール呼び出しに展開します。
+掲示板向けの `board-digest` スキルが同梱されており、掲示板の要約・情報探索の依頼を適切なツール呼び出しに展開します。
 
 ## システム構成
 
@@ -58,7 +72,7 @@ graph LR
     end
     subgraph LW["LINE WORKS クラウド"]
         Auth["認証サーバー<br/>auth.worksmobile.com"]
-        API["Board API<br/>www.worksapis.com/v1.0"]
+        API["LINE WORKS API<br/>www.worksapis.com/v1.0<br/>(現状は Board API のみ利用)"]
     end
     User -- "掲示板を要約して" --> Claude
     Claude -- "MCP ツール呼び出し" --> MCP
@@ -80,7 +94,7 @@ sequenceDiagram
     participant S as MCP サーバー<br/>(プラグイン)
     participant B as ブラウザ
     participant A as LINE WORKS 認証
-    participant P as Board API
+    participant P as LINE WORKS API<br/>(Board)
 
     U->>C: 「お知らせ掲示板を要約して」
     C->>S: list_boards
@@ -122,11 +136,12 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 - 実 API の検証記録: [docs/api-notes.md](docs/api-notes.md)
 - 手動 E2E 検証チェックリスト: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
-- Claude Desktop 用 MCPB(`.mcpb`)をビルド: `cd server && npm run build:mcpb`(`build/line-works-board.mcpb` が出力される)
+- Claude Desktop 用 MCPB(`.mcpb`)をビルド: `cd server && npm run build:mcpb`(`build/line-works.mcpb` が出力される)
 
 ## TODO(公開後)
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
+- [ ] **対応機能の拡張** — 掲示板以外(トーク / Bot、カレンダー等)の対応可否をフィードバックを見ながら検討
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
 - [ ] **CI 整備**(オプショナル)— ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + サーバー起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行
 
