@@ -10,14 +10,14 @@ LINE WORKS の掲示板(Board)を Claude(Code / Desktop)から読み取り、要
 - **読み取り専用** — 投稿・編集・削除は一切できないため、誤操作の心配がありません
 - **本人の権限どおり** — 各利用者が自分の LINE WORKS アカウントでログインし、本人が閲覧できる掲示板だけが見えます(ユーザー OAuth)
 - **非エンジニアでも導入可能** — ビルド不要。インストールして ID を貼り付け、ブラウザでログインするだけ
-- **macOS / Windows 対応** — Node.js 18 以降のみが前提です
+- **macOS / Windows 対応**
 
 ## 対応環境と配布形式
 
 | 環境 | 対応 | 配布形式 | 備考 |
 |---|---|---|---|
-| Claude Desktop | ✅ | `.mcpb`(Anthropic 公式の Desktop 拡張機能) | **Free プランでも利用可能** |
-| Claude Code(CLI / IDE) | ✅ | プラグイン(このリポジトリのマーケットプレイス経由) | Claude Code は Pro / Max / Team / Enterprise プラン向け |
+| Claude Desktop | ✅ | `.mcpb`(Anthropic 公式の Desktop 拡張機能) | **Free プランでも利用可能**。Node.js のインストール不要(Desktop がランタイム提供) |
+| Claude Code(CLI / IDE) | ✅ | プラグイン(このリポジトリのマーケットプレイス経由) | Claude Code は Pro / Max / Team / Enterprise プラン向け(Node.js 18 以降を含む) |
 | claude.ai(ブラウザ版チャット) | ❌ | — | ローカル MCP サーバーを実行できないため。対応にはリモート MCP のホスティングが必要(将来検討) |
 
 ※ 実機検証は macOS(Claude Code CLI + Claude Desktop)で実施。Windows も Node 18+ 環境で動作する想定だが、公開前の実機検証は行わないため公開後にフィードバックがあれば個別対応します。
