@@ -21,7 +21,8 @@ Claude Code CLI が無くても、Claude Desktop 単体で完結します。
 #### 手順
 
 1. **`.mcpb` ファイルをダウンロード**
-   - [Releases 一覧](https://github.com/aalto-consulting-inc/claude-line-works/releases) を開き、最新リリースの Assets から `.mcpb` ファイル(`line-works-<バージョン>.mcpb`)を取得
+   - [最新版の line-works.mcpb を直接ダウンロード](https://github.com/aalto-consulting-inc/claude-line-works/releases/latest/download/line-works.mcpb)
+   - もしくは [Releases 一覧](https://github.com/aalto-consulting-inc/claude-line-works/releases) から `line-works.mcpb` を取得
 2. **Claude Desktop を起動** → **設定** → **拡張機能** → **拡張機能をインストール** → ダウンロードした `.mcpb` を選択(またはドラッグ&ドロップ)
 3. インストール画面で **Client ID / Client Secret / コールバックポート** を入力
    - Client ID: 管理者から受け取った値
