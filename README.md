@@ -118,10 +118,16 @@ npm run build       # ../dist/server.js にバンドル(コミット対象)
 node ../scripts/smoke.mjs   # バンドルのスモークテスト
 ```
 
-- 設計書・開発計画・進捗: [docs/plan.md](docs/plan.md)
-- 実 API の検証記録(Phase 0): [docs/api-notes.md](docs/api-notes.md)
-- リリース前の手動検証: [docs/verification.md](docs/verification.md)
+- 実 API の検証記録: [docs/api-notes.md](docs/api-notes.md)
+- 手動 E2E 検証チェックリスト: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
+- Claude Desktop 用 MCPB(`.mcpb`)をビルド: `cd server && npm run build:mcpb`(`build/line-works-board.mcpb` が出力される)
+
+## TODO(公開後)
+
+- [ ] **パイロット導入** — クライアント 1 社で運用開始 → フィードバック反映 → `v1.0.0`
+- [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
+- [ ] **CI 整備**(オプショナル)— ubuntu / macos / windows-latest の 3 OS マトリクスで vitest ユニット + サーバー起動スモーク(`node dist/server.js` がツール一覧を返す)+ `claude plugin validate --strict` + secret scan を毎 PR 実行
 
 ## 参考リンク
 
