@@ -45,7 +45,7 @@ Claude Code CLI が無くても、Claude Desktop 単体で完結します。
 
 Claude に次のように話しかけてください:
 
-> LINE WORKS に接続して
+> LINE WORKS の掲示板に接続して
 
 Claude が URL を表示するので、それをブラウザで開き、LINE WORKS にログインして「許可」を押します。
 「認可が完了しました」と表示されたら、タブを閉じて Claude に戻ってください。
