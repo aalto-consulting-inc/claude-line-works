@@ -1,0 +1,53 @@
+# Dependabot 設定
+# - セキュリティ更新(Dependabot alerts 起点)は GitHub 側の
+#   Settings > Advanced Security > Dependabot alerts / security updates を
+#   有効にして初めて動く。本ファイルはその更新 PR のまとめ方と、
+#   定期のバージョン更新を定義する。
+# - 注意: server/ の依存は esbuild で dist/server.js にバンドル済みのため、
+#   依存が変わると CI の「Check dist/server.js is up to date」が落ちる。
+#   Dependabot PR をレビューする際は、そのブランチで
+#   `cd server && npm ci && npm run build` を実行し dist/ をコミットする。
+version: 2
+updates:
+  # MCP サーバー本体(server/package.json)
+  - package-ecosystem: npm
+    directory: /server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      # 脆弱性由来の更新は 1 本の PR にまとめて即マージできるようにする
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # 定期更新は minor/patch のみまとめる(major は個別 PR で影響を確認)
+      npm-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions(.github/workflows/*.yml)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns:
+          - "*"
