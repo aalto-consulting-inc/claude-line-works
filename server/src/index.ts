@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   const oauth = new OAuthManager(config);
   const client = new WorksApiClient(oauth);
 
-  const server = new McpServer({ name: "line-works", version: "0.3.1" });
+  const server = new McpServer({ name: "line-works", version: "0.3.2" });
   registerTools(server, { config, oauth, client });
 
   await server.connect(new StdioServerTransport());
