@@ -1,0 +1,133 @@
+# PR ブランチの dist/server.js を自動で再ビルドしてコミットする。
+#
+# 背景: プラグインは .mcp.json から `${CLAUDE_PLUGIN_ROOT}/dist/server.js` を直接起動するため
+# バンドルをリポジトリにコミットしている。server/ の依存やソースが変わるたびに手で
+# `npm run build` してコミットする運用は手間で、Dependabot PR では特に現実的でない。
+#
+# 設計上の要点:
+# - `pull_request_target` を使う。Dependabot PR の `pull_request` では GITHUB_TOKEN が
+#   read-only になり push できないため。base(main)は Dependabot 製ではないので
+#   `pull_request_target` なら通常どおりの書き込み権限が得られる。
+# - ワークフロー定義は base ブランチのものが使われる。PR 側で書き換えられない。
+# - build と commit をジョブで分離し、依存のコードを動かす build 側には
+#   `permissions: {}` かつ `persist-credentials: false` でトークンを一切渡さない。
+#   書き込み権限を持つ commit 側は git と artifact 展開しか行わない。
+# - fork からの PR は対象外(権限付きで他人のコードを動かさない / push もできない)。
+# - GITHUB_TOKEN による push は workflow を再トリガーしないのでループしない。
+#   仮に再実行されても差分がなければ no-op で終わる。
+# - 裏返しとして、GITHUB_TOKEN で push すると bot コミットに CI が付かない。
+#   main の「Require status checks to pass」を満たせずマージ不能になるため、
+#   contents: write を持つ fine-grained PAT(または GitHub App トークン)を
+#   secrets.DIST_BOT_TOKEN に登録して使う。
+#   未登録のまま黙って GITHUB_TOKEN で push すると「PR は緑に見えないが理由が分からない」
+#   状態になるので、dist の更新が必要かつトークンが無い場合は対処法を出して失敗させる。
+#   トークンの期限切れ・失効は push の失敗として現れるので、そこでも同様に案内する。
+name: dist
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "server/**"
+
+concurrency:
+  group: dist-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  build:
+    name: build bundle
+    # fork PR では実行しない
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      # 依存の postinstall を実行しない。esbuild は --ignore-scripts でもビルド可能
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        working-directory: server
+      - name: Build bundle
+        run: npm run build
+        working-directory: server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-server
+          path: dist/server.js
+          retention-days: 1
+          if-no-files-found: error
+
+  commit:
+    name: commit dist
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # PR ブランチをチェックアウト(push するため credentials は残す)。
+      # DIST_BOT_TOKEN が無い場合も診断を出すところまでは進めたいので
+      # チェックアウト自体は GITHUB_TOKEN でも成立させる
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.DIST_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-server
+          path: dist
+      - name: Commit dist/server.js if changed
+        env:
+          HAS_BOT_TOKEN: ${{ secrets.DIST_BOT_TOKEN != '' }}
+        run: |
+          set -u
+
+          if git diff --quiet -- dist/server.js; then
+            echo "dist/server.js は最新。コミットするものはない"
+            exit 0
+          fi
+
+          # トークンが無いまま GITHUB_TOKEN で push すると、コミットに CI が付かず
+          # 必須ステータスチェックを満たせない PR が黙って出来上がる。手前で止める
+          if [ "$HAS_BOT_TOKEN" != "true" ]; then
+            cat >&2 <<'EOS'
+          dist/server.js の更新が必要だが、シークレット DIST_BOT_TOKEN が設定されていない。
+
+          GITHUB_TOKEN で push すると bot のコミットに CI が付かず、main の
+          「Require status checks to pass」を満たせない PR になってしまうため、
+          あえてここで失敗させている。
+
+          対処 (いずれか):
+            1. contents: write を持つ fine-grained PAT を発行し、リポジトリの
+               Settings > Secrets and variables > Actions に DIST_BOT_TOKEN として登録する
+            2. 暫定対応として手元で `cd server && npm run build` を実行し dist/ をコミットする
+          EOS
+            echo "::error title=DIST_BOT_TOKEN が未設定::dist/server.js の更新が必要だが push 用トークンが無い。ログの対処手順を参照"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/server.js
+          git commit -m "build: rebuild dist/server.js"
+
+          if ! git push; then
+            cat >&2 <<'EOS'
+          dist/server.js の push に失敗した。DIST_BOT_TOKEN が
+          期限切れ / 失効 / contents: write 不足のいずれかの可能性が高い。
+
+          対処: fine-grained PAT を再発行し、DIST_BOT_TOKEN を登録し直す。
+                (Repository access: このリポジトリ / Repository permissions: Contents = Read and write)
+          EOS
+            echo "::error title=dist/server.js の push に失敗::DIST_BOT_TOKEN を確認。ログの対処手順を参照"
+            exit 1
+          fi
