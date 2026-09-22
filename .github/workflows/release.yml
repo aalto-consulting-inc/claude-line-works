@@ -76,15 +76,52 @@ jobs:
       - name: Smoke test (MCP tools/list)
         run: node scripts/smoke.mjs
 
-      - name: Attach line-works.mcpb to the release
-        run: gh release upload "$TAG" build/line-works.mcpb --clobber --repo "$REPO"
+      # 公開配布物なので、利用者が改ざんを検知できるようチェックサムを添える。
+      # `sha256sum -c line-works.mcpb.sha256` でそのまま検証できる形式で出力する
+      - name: Generate checksum
+        run: |
+          cd build
+          sha256sum line-works.mcpb > line-works.mcpb.sha256
+          cat line-works.mcpb.sha256
 
-      # 本文が空のときだけ自動生成ノートを入れる。手で書いた本文は上書きしない
-      - name: Fill release notes if empty
-        if: github.event.release.body == ''
+      - name: Attach assets to the release
+        run: |
+          gh release upload "$TAG" \
+            build/line-works.mcpb \
+            build/line-works.mcpb.sha256 \
+            --clobber --repo "$REPO"
+
+      # リリースノートを確定させる。
+      # - 本文が空のときだけ自動生成ノートを入れる。手で書いた本文は上書きしない
+      # - 最後にチェックサムを追記する。マーカーで囲んで毎回置き換えるので再実行しても重複しない
+      #
+      # 下書きの本文はイベントペイロードから取る。`gh release view` はタグ未作成の
+      # 下書きを解決できないことがあるため使わない。
+      - name: Update release notes
         env:
           TARGET: ${{ github.event.release.target_commitish }}
+          # 本文は人が書く任意テキスト。run に直接展開するとスクリプトインジェクションに
+          # なるため、必ず環境変数経由で受け取る
+          BODY: ${{ github.event.release.body }}
         run: |
-          gh api --method POST "repos/$REPO/releases/generate-notes" \
-            -f tag_name="$TAG" -f target_commitish="$TARGET" --jq .body > /tmp/notes.md
-          gh release edit "$TAG" --notes-file /tmp/notes.md --repo "$REPO"
+          if [ -z "$BODY" ]; then
+            gh api --method POST "repos/$REPO/releases/generate-notes" \
+              -f tag_name="$TAG" -f target_commitish="$TARGET" --jq .body > /tmp/body.md
+          else
+            printf '%s\n' "$BODY" > /tmp/body.md
+            sed -i '/<!-- sha256:start -->/,/<!-- sha256:end -->/d' /tmp/body.md
+          fi
+          {
+            echo
+            echo '<!-- sha256:start -->'
+            echo '### チェックサム'
+            echo
+            echo '```'
+            cat build/line-works.mcpb.sha256
+            echo '```'
+            echo
+            echo '検証: `sha256sum -c line-works.mcpb.sha256`'
+            echo '(Windows は `certutil -hashfile line-works.mcpb SHA256`)'
+            echo '<!-- sha256:end -->'
+          } >> /tmp/body.md
+          gh release edit "$TAG" --notes-file /tmp/body.md --repo "$REPO"

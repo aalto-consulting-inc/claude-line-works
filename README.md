@@ -173,7 +173,7 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
    - Choose a tag: `v<x.y.z>` を入力して **Create new tag on publish**
    - Target: `main`
    - **Save draft**(Publish ではなく下書き保存)
-3. **Action の完了を待つ** — バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → 下書きに `line-works.mcpb` を添付。本文が空なら自動生成のリリースノートも入れる(自分で本文を書いた場合は上書きしない)
+3. **Action の完了を待つ** — バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → 下書きに `line-works.mcpb` と `line-works.mcpb.sha256` を添付。本文が空なら自動生成のリリースノートも入れる(自分で本文を書いた場合は上書きしない)。どちらの場合も末尾にチェックサムを追記する
 4. **Publish release** — 内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
 
 補足:
@@ -181,6 +181,7 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
 - バージョン不一致やテスト失敗で Action が落ちた場合、下書きはそのまま残る。修正を main にマージしてから Actions で **Re-run jobs** すればよい(下書きを作り直す必要はない)
 - 下書きの本文を編集しても Action は再発火しない(自分の更新でループするため `edited` は購読していない)
 - タグを直接 push しても何も起きない。リリースは必ず GitHub 上の下書きから始める
+- チェックサムはリリースノート内を `<!-- sha256:start -->` 〜 `<!-- sha256:end -->` で囲んで挿入する。Re-run しても重複せず、囲みの外に書いた本文は保持される
 
 ## TODO
 

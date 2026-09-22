@@ -1,0 +1,37 @@
+name: 機能リクエスト
+description: 新しいツールや改善の提案
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        現在の対応範囲は**掲示板(Board)の読み取りのみ**です。トーク / カレンダー / 組織情報は未対応で、対応には OAuth スコープの追加が必要になります。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 実現したいこと
+      description: どんな場面で何ができると助かるか。
+      placeholder: 例) 掲示板の投稿に付いたコメントも読めるようにしたい
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 対象
+      options:
+        - 掲示板(Board)
+        - トーク / Bot
+        - カレンダー
+        - 組織・メンバー情報
+        - セットアップ・ドキュメント
+        - その他
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: 現状の回避策(任意)
+      description: 今はどうしのいでいるか。
