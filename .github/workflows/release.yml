@@ -83,16 +83,28 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # 3 つのマニフェストの version と入力がずれたままリリースするのを防ぐ
+      # version を書く場所すべてが入力と揃っているか確認する。
+      # 1 箇所でも古いままリリースすると、配布物の名乗るバージョンとタグがずれる
       - name: Check versions match the tag
         run: |
-          for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json; do
+          ng=0
+          for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json server/package-lock.json; do
             v=$(node -p "require('./$f').version")
             if [ "$v" != "$VERSION" ]; then
               echo "::error file=$f::version ($v) が指定バージョン ($VERSION) と一致しません"
-              exit 1
+              ng=1
             fi
           done
+          # MCP サーバが initialize で名乗るバージョン(ソース直書き)
+          v=$(node -e 'const s=require("fs").readFileSync("server/src/index.ts","utf8");
+            const m=s.match(/new McpServer\(\{[^}]*version:\s*"([^"]+)"/);
+            if (!m) { console.error("version の記述を見つけられません"); process.exit(1); }
+            console.log(m[1]);')
+          if [ "$v" != "$VERSION" ]; then
+            echo "::error file=server/src/index.ts::version ($v) が指定バージョン ($VERSION) と一致しません"
+            ng=1
+          fi
+          exit $ng
 
       - run: npm ci
         working-directory: server

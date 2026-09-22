@@ -39379,7 +39379,7 @@ async function main() {
   const config2 = loadConfig();
   const oauth = new OAuthManager(config2);
   const client = new WorksApiClient(oauth);
-  const server = new McpServer({ name: "line-works", version: "0.3.0" });
+  const server = new McpServer({ name: "line-works", version: "0.3.1" });
   registerTools(server, { config: config2, oauth, client });
   await server.connect(new StdioServerTransport());
 }

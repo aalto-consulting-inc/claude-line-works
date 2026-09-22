@@ -1,6 +1,6 @@
 {
   "name": "line-works-mcp-server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "MCP server for LINE WORKS (currently supports reading Board/掲示板 content only)",
   "type": "module",
