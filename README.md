@@ -153,6 +153,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
+- [ ] **Dependabot のバージョン更新を有効化** — 現在は脆弱性起点のセキュリティ更新のみ。定期更新を再開する場合は [`.github/dependabot.yml`](.github/dependabot.yml) の `open-pull-requests-limit` を `0` から戻す。依存更新は `dist/server.js` のバンドル内容を変えるため、PR ごとに `cd server && npm run build` して `dist/` をコミットする運用が前提
 
 ## 参考リンク
 
