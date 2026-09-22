@@ -124,59 +124,18 @@ jobs:
       - name: Smoke test (MCP tools/list)
         run: node scripts/smoke.mjs
 
-      # 公開配布物なので、利用者が改ざんを検知できるようチェックサムを添える。
-      # `sha256sum -c line-works.mcpb.sha256` でそのまま検証できる形式で出力する
-      - name: Generate checksum
-        run: |
-          cd build
-          sha256sum line-works.mcpb > line-works.mcpb.sha256
-          cat line-works.mcpb.sha256
-
-      # 本文を組み立てる。
-      # - 新規作成時は自動生成のリリースノート
-      # - 再実行時は既存の下書きの本文を保持する(手で書いた内容を上書きしない)
-      # - 末尾にチェックサムを追記する。マーカーで囲んで毎回置き換えるので再実行しても重複しない
-      - name: Compose release notes
-        run: |
-          body=""
-          if [ "$RELEASE_STATE" = "draft" ]; then
-            body=$(gh api "repos/$REPO/releases?per_page=100" \
-              --jq "[.[] | select(.tag_name == \"$TAG\")][0].body // \"\"")
-          fi
-          if [ -z "$body" ]; then
-            gh api --method POST "repos/$REPO/releases/generate-notes" \
-              -f tag_name="$TAG" -f target_commitish="$SHA" --jq .body > /tmp/body.md
-          else
-            printf '%s\n' "$body" > /tmp/body.md
-            sed -i '/<!-- sha256:start -->/,/<!-- sha256:end -->/d' /tmp/body.md
-          fi
-          {
-            echo
-            echo '<!-- sha256:start -->'
-            echo '### チェックサム'
-            echo
-            echo '```'
-            cat build/line-works.mcpb.sha256
-            echo '```'
-            echo
-            echo '検証: `sha256sum -c line-works.mcpb.sha256`'
-            echo '(Windows は `certutil -hashfile line-works.mcpb SHA256`)'
-            echo '<!-- sha256:end -->'
-          } >> /tmp/body.md
-
+      # 資産の sha256 は GitHub がアップロード時に計算し、リリース画面と API
+      # (asset の digest)で公開する。workflow 側でチェックサムを添える必要はない
+      #
+      # 再実行時は本文に触らない。自動生成のノートを人が書き換えていることがある
       - name: Create or update the draft release
         run: |
           if [ "$RELEASE_STATE" = "draft" ]; then
-            gh release edit "$TAG" --target "$SHA" --notes-file /tmp/body.md --repo "$REPO"
-            gh release upload "$TAG" \
-              build/line-works.mcpb \
-              build/line-works.mcpb.sha256 \
-              --clobber --repo "$REPO"
+            gh release edit "$TAG" --target "$SHA" --repo "$REPO"
+            gh release upload "$TAG" build/line-works.mcpb --clobber --repo "$REPO"
           else
-            gh release create "$TAG" \
-              build/line-works.mcpb \
-              build/line-works.mcpb.sha256 \
-              --draft --target "$SHA" --title "$TAG" --notes-file /tmp/body.md --repo "$REPO"
+            gh release create "$TAG" build/line-works.mcpb \
+              --draft --target "$SHA" --title "$TAG" --generate-notes --repo "$REPO"
           fi
           echo "### 下書きリリース $TAG を作成しました" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
