@@ -149,7 +149,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 タグ push で [`.github/workflows/release.yml`](.github/workflows/release.yml) が動き、バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → **下書きの** GitHub Release を作成し `line-works.mcpb` を添付する。内容を確認して手動で publish すると、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す。
 
-## TODO(公開後)
+## TODO
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
