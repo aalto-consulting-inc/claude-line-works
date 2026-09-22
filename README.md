@@ -135,6 +135,18 @@ npm run build       # ../dist/server.js にバンドル(コミット対象)
 node ../scripts/smoke.mjs   # バンドルのスモークテスト
 ```
 
+#### `dist/server.js` の扱い
+
+プラグインは `.mcp.json` から `${CLAUDE_PLUGIN_ROOT}/dist/server.js` を直接起動するため、バンドルはリポジトリにコミットしている。ただし **PR ごとに手でビルドしてコミットする必要はない**。
+
+`server/**` を変更した PR には [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が反応し、バンドルを再ビルドして差分があれば `build: rebuild dist/server.js` として PR ブランチに自動コミットする(Dependabot PR も同様)。CI の同期チェックは PR では行わず、main への push とタグ push(リリース)で最終確認する。
+
+制約:
+
+- **fork からの PR は対象外**。権限付きで他人のコードを実行しないため。fork の場合は手で `npm run build` してコミットする
+- bot の push では CI が再実行されない(`GITHUB_TOKEN` の仕様)。main に「Require status checks to pass」を設定する場合は、`contents: write` を持つ fine-grained PAT か GitHub App トークンを `DIST_BOT_TOKEN` シークレットに登録する。登録されていれば `dist.yml` が自動でそちらを使い、bot の push でも CI が走る
+- このワークフロー追加**以前**に作られた PR には遡って発火しない。Dependabot PR なら `@dependabot recreate` とコメントすれば作り直されて発火する
+
 - 実 API の検証記録: [docs/api-notes.md](docs/api-notes.md)
 - 手動 E2E 検証チェックリスト: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
@@ -143,7 +155,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 ### リリース
 
 1. **バージョンを上げる** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)
-2. **バンドルを更新してコミット** — `cd server && npm run build`(`dist/server.js` はコミット対象。未更新だと CI が落ちる)
+2. **バンドルを更新してコミット** — リリース PR でも `dist.yml` が自動コミットする。手元で確認したいときは `cd server && npm run build`
 3. **main にマージ** — この時点で Claude Code(マーケットプレイス経由)の利用者に反映される
 4. **タグを push** — `git tag v<x.y.z> && git push origin v<x.y.z>`
 
@@ -153,7 +165,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
-- [ ] **Dependabot のバージョン更新を有効化** — 現在は脆弱性起点のセキュリティ更新のみ。定期更新を再開する場合は [`.github/dependabot.yml`](.github/dependabot.yml) の `open-pull-requests-limit` を `0` から戻す。依存更新は `dist/server.js` のバンドル内容を変えるため、PR ごとに `cd server && npm run build` して `dist/` をコミットする運用が前提
+- [ ] **Dependabot のバージョン更新を有効化** — 現在は脆弱性起点のセキュリティ更新のみ。定期更新を再開する場合は [`.github/dependabot.yml`](.github/dependabot.yml) の `open-pull-requests-limit` を `0` から戻す。依存更新で変わる `dist/server.js` は [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が自動コミットするため、定期更新を戻しても手作業は増えない
 
 ## 参考リンク
 

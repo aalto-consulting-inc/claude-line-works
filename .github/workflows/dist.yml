@@ -1,0 +1,95 @@
+# PR ブランチの dist/server.js を自動で再ビルドしてコミットする。
+#
+# 背景: プラグインは .mcp.json から `${CLAUDE_PLUGIN_ROOT}/dist/server.js` を直接起動するため
+# バンドルをリポジトリにコミットしている。server/ の依存やソースが変わるたびに手で
+# `npm run build` してコミットする運用は手間で、Dependabot PR では特に現実的でない。
+#
+# 設計上の要点:
+# - `pull_request_target` を使う。Dependabot PR の `pull_request` では GITHUB_TOKEN が
+#   read-only になり push できないため。base(main)は Dependabot 製ではないので
+#   `pull_request_target` なら通常どおりの書き込み権限が得られる。
+# - ワークフロー定義は base ブランチのものが使われる。PR 側で書き換えられない。
+# - build と commit をジョブで分離し、依存のコードを動かす build 側には
+#   `permissions: {}` かつ `persist-credentials: false` でトークンを一切渡さない。
+#   書き込み権限を持つ commit 側は git と artifact 展開しか行わない。
+# - fork からの PR は対象外(権限付きで他人のコードを動かさない / push もできない)。
+# - GITHUB_TOKEN による push は workflow を再トリガーしないのでループしない。
+#   仮に再実行されても差分がなければ no-op で終わる。
+# - 裏返しとして、GITHUB_TOKEN で push すると bot コミットに CI が付かない。
+#   main に「Require status checks to pass」を設定する場合はこれだとマージできなくなるので、
+#   contents: write を持つ fine-grained PAT(または GitHub App トークン)を
+#   secrets.DIST_BOT_TOKEN に登録する。登録されていれば自動でそちらを使い、
+#   bot の push でも CI が再実行される。未登録なら GITHUB_TOKEN にフォールバックする。
+name: dist
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "server/**"
+
+concurrency:
+  group: dist-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  build:
+    name: build bundle
+    # fork PR では実行しない
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      # 依存の postinstall を実行しない。esbuild は --ignore-scripts でもビルド可能
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        working-directory: server
+      - name: Build bundle
+        run: npm run build
+        working-directory: server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-server
+          path: dist/server.js
+          retention-days: 1
+          if-no-files-found: error
+
+  commit:
+    name: commit dist
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # PR ブランチをチェックアウト(push するため credentials は残す)
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # PAT があれば bot の push で CI が再実行される(上のコメント参照)
+          token: ${{ secrets.DIST_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-server
+          path: dist
+      - name: Commit dist/server.js if changed
+        run: |
+          if git diff --quiet -- dist/server.js; then
+            echo "dist/server.js は最新。コミットするものはない"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/server.js
+          git commit -m "build: rebuild dist/server.js"
+          git push

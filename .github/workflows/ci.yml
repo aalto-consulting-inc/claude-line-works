@@ -28,9 +28,13 @@ jobs:
       - run: npm test
       - name: Rebuild bundle
         run: npm run build
+      # PR では dist.yml が bot コミットで dist/ を同期するため、ここでは検証しない。
+      # main への push(= マージ後)と release.yml のタグ時に最終チェックする。
       - name: Check dist/server.js is up to date
+        if: github.event_name == 'push'
         run: git diff --exit-code -- ../dist
-        # 失敗した場合: server/ の変更後に `npm run build` を実行して dist/ をコミットし直す
+        # 失敗した場合: dist.yml が動かなかったということ。
+        # `cd server && npm run build` を実行して dist/ をコミットし直す
       - name: Smoke test (MCP tools/list)
         working-directory: .
         run: node scripts/smoke.mjs

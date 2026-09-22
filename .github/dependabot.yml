@@ -6,10 +6,10 @@
 # - セキュリティ更新は GitHub 側の Settings > Advanced Security で
 #   Dependency graph / Dependabot alerts / Dependabot security updates を
 #   有効にして初めて動く。本ファイルは PR のまとめ方と体裁のみを定義する。
-# - 注意: server/ の依存は esbuild で dist/server.js にバンドル済みのため、
-#   依存が変わると CI の「Check dist/server.js is up to date」が落ちる。
-#   Dependabot PR をレビューする際は、そのブランチで
-#   `cd server && npm ci && npm run build` を実行し dist/ をコミットする。
+# - server/ の依存は esbuild で dist/server.js にバンドル済みのため、依存が変わると
+#   バンドル内容も変わる。この再ビルドと再コミットは
+#   `.github/workflows/dist.yml` が PR ブランチに対して自動で行う。
+#   手で `npm run build` してコミットする必要はない。
 version: 2
 updates:
   # MCP サーバー本体(server/package.json)
