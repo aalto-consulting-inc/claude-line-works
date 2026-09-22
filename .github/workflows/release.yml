@@ -1,28 +1,29 @@
-# Actions からバージョンを指定して実行すると、この workflow が下書きリリースを作る。
+# `release` ラベルの付いた PR が main にマージされると、この workflow が下書きリリースを作る。
 # 人がやることは中身を確認して Publish するだけ。
 #
 # 手順:
-#   1. バージョンを上げた PR を main にマージする
-#   2. Actions > Release > Run workflow でバージョン(例 0.3.1)を入力して実行
-#   3. バージョン整合チェック → テスト → `.mcpb` ビルド → 資産とノート付きの下書きリリースが出来る
-#   4. 内容を確認して Publish release。git タグはこのとき初めて作られる
+#   1. Actions > Bump version でバージョンを指定して実行し、出来た PR をマージする
+#      (Bump version が `release` ラベルを付けて PR を作る)
+#   2. この workflow が発火し、整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成
+#   3. 内容を確認して Publish release。git タグはこのとき初めて作られる
 #
 # 設計上の要点:
 # - `release: [created]` は draft では発火しない(GitHub の仕様)。下書き作成を起点にはできないため、
 #   下書きそのものをこの workflow が作る。
-# - 下書きの target は dispatch 時の main の SHA に固定する。Publish までに main が進んでも、
+# - リリースするバージョンは入力させず、マージされたコードから読む。入力と実体がずれる余地をなくす。
+# - 発火条件はラベルで判定する。パスで判定すると、依存更新で server/package.json が
+#   触られただけの push でも発火してしまう。
+# - 確認中の下書きを自動で上書きしない。下書きが既にある場合、更新するのは手動実行のときだけ。
+# - 下書きの target はマージコミットの SHA に固定する。Publish までに main が進んでも、
 #   ビルドした中身とタグの指す commit がずれない。
 # - ビルドが全部通ってから下書きを作る。途中で落ちたときに中途半端な下書きを残さない。
-# - 再実行時に下書きが既にあれば、資産を差し替えて本文を更新する(手で書いた本文は保持する)。
 name: Release
 
 on:
+  pull_request:
+    types: [closed]
+  # 取りこぼしたときや、確認中の下書きを作り直したいときの手動実行
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'リリースするバージョン (例: 0.3.1)'
-        required: true
-        type: string
 
 permissions: {}
 
@@ -31,80 +32,99 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # リリースが必要かどうかだけを判定する。不要なら後続をまるごと飛ばす
+  check:
+    name: check version
+    # マージされた `release` ラベル付き PR か、main からの手動実行のときだけ動く。
+    # fork からの PR は対象外(GITHUB_TOKEN が read-only でどのみち書き込めない)
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.labels.*.name, 'release'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      proceed: ${{ steps.gate.outputs.proceed }}
+      state: ${{ steps.gate.outputs.state }}
+    steps:
+      # pull_request イベントの既定の ref はマージコミットではないので、
+      # マージ後の main の中身(= merge_commit_sha)を明示的に取る
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      # バージョンはコードから読む。あわせて 5 ファイルが揃っているかも確認する。
+      # ここでの不一致は main に不整合が入ったということなので、黙らせず落とす
+      - name: Read the version from the code
+        id: version
+        run: |
+          version=$(node -p "require('./.claude-plugin/plugin.json').version")
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=.claude-plugin/plugin.json::version ($version) が x.y.z 形式ではありません"
+            exit 1
+          fi
+          node scripts/bump-version.mjs "$version" --check
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to release
+        id: gate
+        env:
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          state=none
+          proceed=true
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::notice::$TAG は公開済み(タグあり)。リリースするものはない"
+            proceed=false
+          else
+            state=$(gh api "repos/$REPO/releases?per_page=100" \
+              --jq "[.[] | select(.tag_name == \"$TAG\")][0] | if . == null then \"none\" elif .draft then \"draft\" else \"published\" end")
+            if [ "$state" = "published" ]; then
+              echo "::notice::リリース $TAG は既に公開されている"
+              proceed=false
+            elif [ "$state" = "draft" ] && [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+              # 人が確認している最中の下書きを push で勝手に差し替えない
+              echo "::notice::$TAG の下書きが既にある。作り直す場合は手動で Run workflow する"
+              proceed=false
+            fi
+          fi
+
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "proceed=$proceed" >> "$GITHUB_OUTPUT"
+
   release:
     name: build and draft
+    needs: check
+    if: needs.check.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SHA: ${{ github.sha }}
+      SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      TAG: ${{ needs.check.outputs.tag }}
+      RELEASE_STATE: ${{ needs.check.outputs.state }}
     steps:
-      # 入力は人が打つ任意テキスト。以降のステップで使う前にここで形を固定する
-      - name: Resolve tag
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-        run: |
-          version="${INPUT_VERSION#v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::バージョン ($INPUT_VERSION) が x.y.z 形式ではありません"
-            exit 1
-          fi
-          echo "VERSION=$version" >> "$GITHUB_ENV"
-          echo "TAG=v$version" >> "$GITHUB_ENV"
-
-      - name: Check the workflow runs on main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::リリースは main から実行してください (現在: ${{ github.ref }})"
-          exit 1
-
       - uses: actions/checkout@v4
-
-      # 公開済みのリリースやタグを踏み潰さない。下書きだけは再実行として引き継ぐ
-      - name: Check the tag is free
-        run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::タグ $TAG は既に存在します"
-            exit 1
-          fi
-          state=$(gh api "repos/$REPO/releases?per_page=100" \
-            --jq "[.[] | select(.tag_name == \"$TAG\")][0] | if . == null then \"none\" elif .draft then \"draft\" else \"published\" end")
-          if [ "$state" = "published" ]; then
-            echo "::error::リリース $TAG は既に公開されています"
-            exit 1
-          fi
-          echo "RELEASE_STATE=$state" >> "$GITHUB_ENV"
-
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
-
-      # version を書く場所すべてが入力と揃っているか確認する。
-      # 1 箇所でも古いままリリースすると、配布物の名乗るバージョンとタグがずれる
-      - name: Check versions match the tag
-        run: |
-          ng=0
-          for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json server/package-lock.json; do
-            v=$(node -p "require('./$f').version")
-            if [ "$v" != "$VERSION" ]; then
-              echo "::error file=$f::version ($v) が指定バージョン ($VERSION) と一致しません"
-              ng=1
-            fi
-          done
-          # MCP サーバが initialize で名乗るバージョン(ソース直書き)
-          v=$(node -e 'const s=require("fs").readFileSync("server/src/index.ts","utf8");
-            const m=s.match(/new McpServer\(\{[^}]*version:\s*"([^"]+)"/);
-            if (!m) { console.error("version の記述を見つけられません"); process.exit(1); }
-            console.log(m[1]);')
-          if [ "$v" != "$VERSION" ]; then
-            echo "::error file=server/src/index.ts::version ($v) が指定バージョン ($VERSION) と一致しません"
-            ng=1
-          fi
-          exit $ng
 
       - run: npm ci
         working-directory: server
@@ -127,7 +147,8 @@ jobs:
       # 資産の sha256 は GitHub がアップロード時に計算し、リリース画面と API
       # (asset の digest)で公開する。workflow 側でチェックサムを添える必要はない
       #
-      # 再実行時は本文に触らない。自動生成のノートを人が書き換えていることがある
+      # 下書きを作り直すときも本文には触らない。自動生成のノートを人が
+      # 書き換えていることがある
       - name: Create or update the draft release
         run: |
           if [ "$RELEASE_STATE" = "draft" ]; then
