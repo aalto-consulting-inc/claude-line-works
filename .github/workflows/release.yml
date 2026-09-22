@@ -1,17 +1,41 @@
+# GitHub 上で「下書きリリース」を作ると、この workflow が中身を埋める。
+#
+# 手順:
+#   1. Releases > Draft a new release で新しいタグ `v<x.y.z>` を入力し、Target を main にして Save draft
+#   2. この workflow が発火し、バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きに添付
+#   3. 内容を確認して Publish release。git タグはこのとき初めて作られる
+#
+# 設計上の要点:
+# - `release: [created]` は「下書きが保存された」「下書きを経ずに公開された」のどちらでも発火する。
+#   `edited` は購読しない。この workflow 自身が下書きを更新するため再発火してループする。
+# - 下書きの時点ではタグがまだ存在しない。checkout する ref は下書きなら target_commitish(= main)、
+#   公開済みのリリースならタグを使う。
+# - `gh release upload` / `edit` はタグ名で下書きも解決できる(公開済みリリースの API で 404 になった場合、
+#   下書き一覧から突き合わせる)。
+# - GITHUB_TOKEN が作ったリリースは workflow を発火しないが、ここは人が UI で作るので問題ない。
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [created]
+
+permissions: {}
 
 jobs:
   release:
-    name: build and publish
+    name: build and attach
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 下書き: タグ未作成なので Target のブランチ。公開済み: タグそのもの
+          ref: ${{ github.event.release.draft && github.event.release.target_commitish || github.event.release.tag_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -21,11 +45,15 @@ jobs:
       # 3 つのマニフェストの version とタグがずれたままリリースするのを防ぐ
       - name: Check versions match the tag
         run: |
-          tag="${GITHUB_REF_NAME#v}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::タグ名 ($TAG) が v<x.y.z> 形式ではありません"
+            exit 1
+          fi
+          version="${TAG#v}"
           for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json; do
             v=$(node -p "require('./$f').version")
-            if [ "$v" != "$tag" ]; then
-              echo "::error file=$f::version ($v) がタグ ($tag) と一致しません"
+            if [ "$v" != "$version" ]; then
+              echo "::error file=$f::version ($v) がタグ ($TAG) と一致しません"
               exit 1
             fi
           done
@@ -48,10 +76,15 @@ jobs:
       - name: Smoke test (MCP tools/list)
         run: node scripts/smoke.mjs
 
-      # files の glob はリポジトリルート基準(working_directory の既定値)
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: build/line-works.mcpb
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          draft: true
+      - name: Attach line-works.mcpb to the release
+        run: gh release upload "$TAG" build/line-works.mcpb --clobber --repo "$REPO"
+
+      # 本文が空のときだけ自動生成ノートを入れる。手で書いた本文は上書きしない
+      - name: Fill release notes if empty
+        if: github.event.release.body == ''
+        env:
+          TARGET: ${{ github.event.release.target_commitish }}
+        run: |
+          gh api --method POST "repos/$REPO/releases/generate-notes" \
+            -f tag_name="$TAG" -f target_commitish="$TARGET" --jq .body > /tmp/notes.md
+          gh release edit "$TAG" --notes-file /tmp/notes.md --repo "$REPO"
