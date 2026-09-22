@@ -2,8 +2,7 @@
 #
 # 手順:
 #   1. Actions > Bump version > Run workflow でバージョン(例 0.3.2)を入力して実行
-#   2. 出来た PR の内容を確認してマージ
-#   3. Actions > Release で同じバージョンを指定して実行(下書きリリースが出来る)
+#   2. 出来た PR の内容を確認してマージ。マージで release.yml が発火し下書きリリースが出来る
 #
 # 設計上の要点:
 # - 更新対象の定義は scripts/bump-version.mjs に置く。release.yml の整合チェックも
@@ -140,7 +139,8 @@ jobs:
           - \`server/src/index.ts\`
           - \`dist/server.js\`(再ビルド)
 
-          マージ後、Actions > Release で \`$VERSION\` を指定して実行すると下書きリリースが出来る。
+          この PR をマージすると Release workflow が発火し、\`v$VERSION\` の下書きリリースが出来る。
+          あとは内容を確認して Publish するだけ。
           EOS
           )
           url=$(gh pr create \
