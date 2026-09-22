@@ -1,0 +1,13 @@
+# CodeQL の解析設定(.github/workflows/codeql.yml から config-file で参照)
+#
+# dist/server.js を解析対象から外す。理由:
+# - esbuild の生成物であり、解析すべき原本は server/src 側にある。両方解析すると
+#   同じ指摘が二重に上がる(実際に Reflected XSS がソース側とバンドル側の 2 件になっていた)
+# - バンドルされた第三者コードの指摘まで上がるが、こちらでは直せない。
+#   依存自体の脆弱性は Dependabot alerts の担当
+# - .github/workflows/dist.yml により依存更新のたびに自動再ビルドされるため、
+#   行番号がずれて dismiss しても新しいアラートが生え続ける
+name: claude-line-works CodeQL config
+
+paths-ignore:
+  - dist

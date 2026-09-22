@@ -147,6 +147,18 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 - **`DIST_BOT_TOKEN` シークレットの登録が必要。** `GITHUB_TOKEN` で push すると bot のコミットに CI が付かず(`GITHUB_TOKEN` の仕様)、main の「Require status checks to pass」を満たせない PR になってしまう。`contents: write` を持つ fine-grained PAT か GitHub App トークンを登録する。未登録のまま `dist/` の更新が必要になった場合、`dist.yml` は黙ってフォールバックせず対処手順を出して失敗する。トークンの期限切れ・失効も push の失敗として同様に案内される
 - このワークフロー追加**以前**に作られた PR には遡って発火しない。Dependabot PR なら `@dependabot recreate` とコメントすれば作り直されて発火する
 
+#### コード解析(CodeQL)
+
+CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows/codeql.yml))で動かしている。default setup ではなくワークフローに切り出しているのは、**解析対象から `dist/` を除外するため**([`.github/codeql/codeql-config.yml`](.github/codeql/codeql-config.yml))。default setup ではパス除外を設定できない。
+
+`dist/server.js` は esbuild の生成物なので、解析対象に含めると
+
+- 同じ指摘がソース側(`server/src`)とバンドル側で二重に上がる
+- バンドルされた第三者コードの指摘まで上がるが、こちらでは直せない(依存自体の脆弱性は Dependabot alerts の担当)
+- `dist.yml` による自動再ビルドのたびに行番号がずれ、dismiss しても新しいアラートが生え続ける
+
+という問題がある。
+
 - 実 API の検証記録: [docs/api-notes.md](docs/api-notes.md)
 - 手動 E2E 検証チェックリスト: [docs/verification.md](docs/verification.md)
 - ローカルでプラグインとして試す: `claude --plugin-dir .`
