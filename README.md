@@ -166,17 +166,19 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
 
 ### リリース
 
-手元で `git tag` を打つ必要はない。[Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) にバージョンを指定して実行すると、資産とリリースノート付きの下書きリリースが出来る。人がやるのは中身を確認して Publish するだけ。
+手元での作業は不要。Actions からバージョンを 2 回指定するだけで、バージョン更新 PR と下書きリリースが出来る。人がやるのは PR をマージして、リリースの中身を確認して Publish するだけ。
 
-1. **バージョンを上げて main にマージ** — `cd server && npm version <x.y.z> --no-git-tag-version`(`server/package.json` と `server/package-lock.json` が更新される)+ `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/src/index.ts` の `version` を手で揃える。`dist/server.js` はリリース PR でも `dist.yml` が自動コミットする。マージした時点で Claude Code(マーケットプレイス経由)の利用者に反映される
-2. **workflow を実行** — [Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) の **Run workflow** から。Use workflow from は `main`、バージョンに `0.3.1` のように入力して実行
-3. **Action の完了を待つ** — タグ重複チェック → バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成。`line-works.mcpb` が添付され、本文には自動生成のリリースノートが入る
-4. **Publish release** — Releases で内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
+1. **バージョンを上げる** — [Bump version workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/bump-version.yml) の **Run workflow** から。Use workflow from は `main`、バージョンに `0.3.2` のように入力して実行。`version` を書いている全ファイルと `dist/server.js` を更新した PR が `release/v<x.y.z>` ブランチに出来る
+2. **PR をマージ** — 内容を確認してマージ。この時点で Claude Code(マーケットプレイス経由)の利用者に反映される
+3. **リリースを作る** — [Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) の **Run workflow** から。Use workflow from は `main`、1 と同じバージョンを入力して実行
+4. **Action の完了を待つ** — タグ重複チェック → バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成。`line-works.mcpb` が添付され、本文には自動生成のリリースノートが入る
+5. **Publish release** — Releases で内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
 
 補足:
 
 - 下書きの Target は実行時の main の SHA に固定される。Publish までに main が進んでも、ビルドした中身とタグの指す commit はずれない
-- workflow は上の 5 ファイルすべてを指定バージョンと突き合わせる。1 つでも古いままなら落ちる
+- `version` は 5 ファイルに散っている。更新対象の定義は [`scripts/bump-version.mjs`](scripts/bump-version.mjs) が持ち、Bump version は書き換えに、Release は `--check` での突き合わせに同じ定義を使う。手元で上げたい場合は `node scripts/bump-version.mjs <x.y.z>` + `cd server && npm run build`
+- Bump version は push と PR 作成に `DIST_BOT_TOKEN` を使う。`GITHUB_TOKEN` で作った PR には CI が付かず、必須ステータスチェックを満たせないため(`dist.yml` と同じ理由)
 - バージョン不一致やテスト失敗で落ちた場合、下書きは作られない。修正を main にマージしてから同じバージョンで再実行すればよい
 - 既に下書きがある状態で再実行すると、資産だけを差し替える。本文には触らないので、自分で書いたリリースノートは保持される
 - タグを直接 push しても、GitHub 上で下書きを手で作っても何も起きない。リリースは必ず Actions から始める(`release` イベントは下書きの作成では発火しないため)

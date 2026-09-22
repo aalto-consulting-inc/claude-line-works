@@ -1,0 +1,152 @@
+# バージョンを指定して実行すると、version を書いている全ファイルを更新した PR を作る。
+#
+# 手順:
+#   1. Actions > Bump version > Run workflow でバージョン(例 0.3.2)を入力して実行
+#   2. 出来た PR の内容を確認してマージ
+#   3. Actions > Release で同じバージョンを指定して実行(下書きリリースが出来る)
+#
+# 設計上の要点:
+# - 更新対象の定義は scripts/bump-version.mjs に置く。release.yml の整合チェックも
+#   同じスクリプトの --check を使うので、対象ファイルの定義が二重化しない。
+# - dist/server.js もここで再ビルドしてコミットする。dist.yml に任せると
+#   PR に追加コミットが 1 つ増えるだけで、待ち時間が延びる。
+# - push と PR 作成は DIST_BOT_TOKEN で行う。GITHUB_TOKEN で push / PR 作成すると
+#   その PR に CI が付かず、main の「Require status checks to pass」を満たせない。
+name: Bump version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '新しいバージョン (例: 0.3.2)'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: bump-version
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: bump and open PR
+    runs-on: ubuntu-latest
+    permissions: {}
+    env:
+      GH_TOKEN: ${{ secrets.DIST_BOT_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      # 入力は人が打つ任意テキスト。以降のステップで使う前にここで形を固定する
+      - name: Resolve version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::バージョン ($INPUT_VERSION) が x.y.z 形式ではありません"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=v$version" >> "$GITHUB_ENV"
+          echo "BRANCH=release/v$version" >> "$GITHUB_ENV"
+
+      - name: Check the workflow runs on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::main から実行してください (現在: ${{ github.ref }})"
+          exit 1
+
+      # トークンが無いまま GITHUB_TOKEN で進めると、CI の付かない PR が黙って
+      # 出来上がる。dist.yml と同じ理由で手前で止める
+      - name: Check the bot token is available
+        env:
+          HAS_BOT_TOKEN: ${{ secrets.DIST_BOT_TOKEN != '' }}
+        run: |
+          if [ "$HAS_BOT_TOKEN" = "true" ]; then
+            exit 0
+          fi
+          cat >&2 <<'EOS'
+          シークレット DIST_BOT_TOKEN が設定されていない。
+
+          GITHUB_TOKEN で push / PR 作成をすると、その PR に CI が付かず main の
+          「Require status checks to pass」を満たせないため、あえてここで失敗させている。
+
+          対処: fine-grained PAT を発行し、リポジトリの
+                Settings > Secrets and variables > Actions に DIST_BOT_TOKEN として登録する
+                (Repository permissions: Contents = Read and write / Pull requests = Read and write)
+          EOS
+          echo "::error title=DIST_BOT_TOKEN が未設定::ログの対処手順を参照"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.DIST_BOT_TOKEN }}
+
+      # 公開済みのバージョンへの巻き戻しを防ぐ。作業用ブランチの取り違えも弾く
+      - name: Check the version is free
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::タグ $TAG は既に存在します"
+            exit 1
+          fi
+          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null 2>&1; then
+            echo "::error::ブランチ $BRANCH は既に存在します。不要なら削除してから再実行してください"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Bump version
+        run: node scripts/bump-version.mjs "$VERSION"
+
+      - run: npm ci
+        working-directory: server
+      - run: npm run typecheck
+        working-directory: server
+      - run: npm test
+        working-directory: server
+
+      # dist/server.js には version が焼き込まれるので必ず再ビルドする
+      - name: Rebuild dist/server.js
+        run: npm run build
+        working-directory: server
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet; then
+            echo "::error::変更がありません。既に $VERSION になっています"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git commit -aqm "release: v$VERSION へのバージョン更新"
+          git push -u origin "$BRANCH"
+
+      - name: Open a pull request
+        run: |
+          body=$(cat <<EOS
+          \`scripts/bump-version.mjs\` による version の一括更新。
+
+          - \`.claude-plugin/plugin.json\`
+          - \`mcpb/manifest.json\`
+          - \`server/package.json\`
+          - \`server/package-lock.json\`
+          - \`server/src/index.ts\`
+          - \`dist/server.js\`(再ビルド)
+
+          マージ後、Actions > Release で \`$VERSION\` を指定して実行すると下書きリリースが出来る。
+          EOS
+          )
+          url=$(gh pr create \
+            --base main --head "$BRANCH" \
+            --title "release: v$VERSION へのバージョン更新" \
+            --body "$body" --repo "$REPO")
+          echo "### $TAG のバージョン更新 PR を作成しました" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
