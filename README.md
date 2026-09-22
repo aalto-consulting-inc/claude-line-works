@@ -144,7 +144,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 制約:
 
 - **fork からの PR は対象外**。権限付きで他人のコードを実行しないため。fork の場合は手で `npm run build` してコミットする
-- bot の push では CI が再実行されない(`GITHUB_TOKEN` の仕様)。main に「Require status checks to pass」を設定する場合は、`contents: write` を持つ fine-grained PAT か GitHub App トークンを `DIST_BOT_TOKEN` シークレットに登録する。登録されていれば `dist.yml` が自動でそちらを使い、bot の push でも CI が走る
+- **`DIST_BOT_TOKEN` シークレットの登録が必要。** `GITHUB_TOKEN` で push すると bot のコミットに CI が付かず(`GITHUB_TOKEN` の仕様)、main の「Require status checks to pass」を満たせない PR になってしまう。`contents: write` を持つ fine-grained PAT か GitHub App トークンを登録する。未登録のまま `dist/` の更新が必要になった場合、`dist.yml` は黙ってフォールバックせず対処手順を出して失敗する。トークンの期限切れ・失効も push の失敗として同様に案内される
 - このワークフロー追加**以前**に作られた PR には遡って発火しない。Dependabot PR なら `@dependabot recreate` とコメントすれば作り直されて発火する
 
 - 実 API の検証記録: [docs/api-notes.md](docs/api-notes.md)

@@ -16,10 +16,12 @@
 # - GITHUB_TOKEN による push は workflow を再トリガーしないのでループしない。
 #   仮に再実行されても差分がなければ no-op で終わる。
 # - 裏返しとして、GITHUB_TOKEN で push すると bot コミットに CI が付かない。
-#   main に「Require status checks to pass」を設定する場合はこれだとマージできなくなるので、
+#   main の「Require status checks to pass」を満たせずマージ不能になるため、
 #   contents: write を持つ fine-grained PAT(または GitHub App トークン)を
-#   secrets.DIST_BOT_TOKEN に登録する。登録されていれば自動でそちらを使い、
-#   bot の push でも CI が再実行される。未登録なら GITHUB_TOKEN にフォールバックする。
+#   secrets.DIST_BOT_TOKEN に登録して使う。
+#   未登録のまま黙って GITHUB_TOKEN で push すると「PR は緑に見えないが理由が分からない」
+#   状態になるので、dist の更新が必要かつトークンが無い場合は対処法を出して失敗させる。
+#   トークンの期限切れ・失効は push の失敗として現れるので、そこでも同様に案内する。
 name: dist
 
 on:
@@ -72,24 +74,60 @@ jobs:
     permissions:
       contents: write
     steps:
-      # PR ブランチをチェックアウト(push するため credentials は残す)
+      # PR ブランチをチェックアウト(push するため credentials は残す)。
+      # DIST_BOT_TOKEN が無い場合も診断を出すところまでは進めたいので
+      # チェックアウト自体は GITHUB_TOKEN でも成立させる
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          # PAT があれば bot の push で CI が再実行される(上のコメント参照)
           token: ${{ secrets.DIST_BOT_TOKEN || secrets.GITHUB_TOKEN }}
       - uses: actions/download-artifact@v4
         with:
           name: dist-server
           path: dist
       - name: Commit dist/server.js if changed
+        env:
+          HAS_BOT_TOKEN: ${{ secrets.DIST_BOT_TOKEN != '' }}
         run: |
+          set -u
+
           if git diff --quiet -- dist/server.js; then
             echo "dist/server.js は最新。コミットするものはない"
             exit 0
           fi
+
+          # トークンが無いまま GITHUB_TOKEN で push すると、コミットに CI が付かず
+          # 必須ステータスチェックを満たせない PR が黙って出来上がる。手前で止める
+          if [ "$HAS_BOT_TOKEN" != "true" ]; then
+            cat >&2 <<'EOS'
+          dist/server.js の更新が必要だが、シークレット DIST_BOT_TOKEN が設定されていない。
+
+          GITHUB_TOKEN で push すると bot のコミットに CI が付かず、main の
+          「Require status checks to pass」を満たせない PR になってしまうため、
+          あえてここで失敗させている。
+
+          対処 (いずれか):
+            1. contents: write を持つ fine-grained PAT を発行し、リポジトリの
+               Settings > Secrets and variables > Actions に DIST_BOT_TOKEN として登録する
+            2. 暫定対応として手元で `cd server && npm run build` を実行し dist/ をコミットする
+          EOS
+            echo "::error title=DIST_BOT_TOKEN が未設定::dist/server.js の更新が必要だが push 用トークンが無い。ログの対処手順を参照"
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist/server.js
           git commit -m "build: rebuild dist/server.js"
-          git push
+
+          if ! git push; then
+            cat >&2 <<'EOS'
+          dist/server.js の push に失敗した。DIST_BOT_TOKEN が
+          期限切れ / 失効 / contents: write 不足のいずれかの可能性が高い。
+
+          対処: fine-grained PAT を再発行し、DIST_BOT_TOKEN を登録し直す。
+                (Repository access: このリポジトリ / Repository permissions: Contents = Read and write)
+          EOS
+            echo "::error title=dist/server.js の push に失敗::DIST_BOT_TOKEN を確認。ログの対処手順を参照"
+            exit 1
+          fi
