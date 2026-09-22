@@ -1,0 +1,44 @@
+# Dependabot 設定
+# - 目的はセキュリティ更新のみ。定期のバージョン更新は行わない。
+#   `open-pull-requests-limit: 0` はバージョン更新だけを無効化し、
+#   Dependabot alerts 起点のセキュリティ更新 PR には影響しない。
+#   (定期更新を再開したくなったらこの値を 5 などに戻す)
+# - セキュリティ更新は GitHub 側の Settings > Advanced Security で
+#   Dependency graph / Dependabot alerts / Dependabot security updates を
+#   有効にして初めて動く。本ファイルは PR のまとめ方と体裁のみを定義する。
+# - 注意: server/ の依存は esbuild で dist/server.js にバンドル済みのため、
+#   依存が変わると CI の「Check dist/server.js is up to date」が落ちる。
+#   Dependabot PR をレビューする際は、そのブランチで
+#   `cd server && npm ci && npm run build` を実行し dist/ をコミットする。
+version: 2
+updates:
+  # MCP サーバー本体(server/package.json)
+  - package-ecosystem: npm
+    directory: /server
+    # schedule は必須項目。バージョン更新を止めているため実際には使われない
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      # 同時に検出された脆弱性を 1 本の PR にまとめて即マージできるようにする
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # GitHub Actions(.github/workflows/*.yml)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"

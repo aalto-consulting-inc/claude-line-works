@@ -149,10 +149,11 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 タグ push で [`.github/workflows/release.yml`](.github/workflows/release.yml) が動き、バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → **下書きの** GitHub Release を作成し `line-works.mcpb` を添付する。内容を確認して手動で publish すると、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す。
 
-## TODO(公開後)
+## TODO
 
 - [ ] **パイロット導入** — 試験運用開始 → フィードバック反映 → `v1.0.0`
 - [ ] **Windows 実機検証**(任意・フィードバック起点で対応)
+- [ ] **Dependabot のバージョン更新を有効化** — 現在は脆弱性起点のセキュリティ更新のみ。定期更新を再開する場合は [`.github/dependabot.yml`](.github/dependabot.yml) の `open-pull-requests-limit` を `0` から戻す。依存更新は `dist/server.js` のバンドル内容を変えるため、PR ごとに `cd server && npm run build` して `dist/` をコミットする運用が前提
 
 ## 参考リンク
 
