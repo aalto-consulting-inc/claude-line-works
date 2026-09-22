@@ -4,6 +4,8 @@
 #   1. Actions > Bump version > Run workflow でバージョン(例 0.3.2)を入力して実行
 #   2. 出来た PR の内容を確認してマージ。マージで release.yml が発火し下書きリリースが出来る
 #
+# release.yml は `release` ラベルでこの PR を識別する。ラベルが無ければここで作る。
+#
 # 設計上の要点:
 # - 更新対象の定義は scripts/bump-version.mjs に置く。release.yml の整合チェックも
 #   同じスクリプトの --check を使うので、対象ファイルの定義が二重化しない。
@@ -129,6 +131,16 @@ jobs:
 
       - name: Open a pull request
         run: |
+          # release.yml はこのラベルで発火する。無ければ作る(既にあれば何もしない)
+          if ! gh api "repos/$REPO/labels/release" >/dev/null 2>&1; then
+            if ! gh label create release \
+              --description "リリース対象のバージョン更新 PR。マージで Release workflow が発火する" \
+              --color 0E8A16 --repo "$REPO"; then
+              echo "::error title=ラベル release を作成できない::DIST_BOT_TOKEN に Issues = Read and write を付けるか、手でラベルを作成してください"
+              exit 1
+            fi
+          fi
+
           body=$(cat <<EOS
           \`scripts/bump-version.mjs\` による version の一括更新。
 
@@ -139,13 +151,14 @@ jobs:
           - \`server/src/index.ts\`
           - \`dist/server.js\`(再ビルド)
 
-          この PR をマージすると Release workflow が発火し、\`v$VERSION\` の下書きリリースが出来る。
-          あとは内容を確認して Publish するだけ。
+          この PR をマージすると Release workflow が発火し、\`v$VERSION\` の下書きリリースが出来る
+          (発火条件は \`release\` ラベル)。あとは内容を確認して Publish するだけ。
           EOS
           )
           url=$(gh pr create \
             --base main --head "$BRANCH" \
             --title "release: v$VERSION へのバージョン更新" \
+            --label release \
             --body "$body" --repo "$REPO")
           echo "### $TAG のバージョン更新 PR を作成しました" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"

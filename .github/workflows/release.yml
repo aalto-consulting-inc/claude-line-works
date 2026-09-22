@@ -1,31 +1,27 @@
-# バージョンを上げた PR が main にマージされると、この workflow が下書きリリースを作る。
+# `release` ラベルの付いた PR が main にマージされると、この workflow が下書きリリースを作る。
 # 人がやることは中身を確認して Publish するだけ。
 #
 # 手順:
 #   1. Actions > Bump version でバージョンを指定して実行し、出来た PR をマージする
+#      (Bump version が `release` ラベルを付けて PR を作る)
 #   2. この workflow が発火し、整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成
 #   3. 内容を確認して Publish release。git タグはこのとき初めて作られる
 #
 # 設計上の要点:
 # - `release: [created]` は draft では発火しない(GitHub の仕様)。下書き作成を起点にはできないため、
 #   下書きそのものをこの workflow が作る。
-# - リリースするバージョンは入力させず、main のコードから読む。入力と実体がずれる余地をなくす。
-# - version を書いたファイルへの push で発火するが、バージョンが上がっていない push
-#   (依存更新など)ではタグの有無で判断してスキップする。main を赤くしない。
-# - 確認中の下書きを push で上書きしない。下書きが既にある場合、更新するのは手動実行のときだけ。
-# - 下書きの target は発火時の main の SHA に固定する。Publish までに main が進んでも、
+# - リリースするバージョンは入力させず、マージされたコードから読む。入力と実体がずれる余地をなくす。
+# - 発火条件はラベルで判定する。パスで判定すると、依存更新で server/package.json が
+#   触られただけの push でも発火してしまう。
+# - 確認中の下書きを自動で上書きしない。下書きが既にある場合、更新するのは手動実行のときだけ。
+# - 下書きの target はマージコミットの SHA に固定する。Publish までに main が進んでも、
 #   ビルドした中身とタグの指す commit がずれない。
 # - ビルドが全部通ってから下書きを作る。途中で落ちたときに中途半端な下書きを残さない。
 name: Release
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".claude-plugin/plugin.json"
-      - "mcpb/manifest.json"
-      - "server/package.json"
-      - "server/src/index.ts"
+  pull_request:
+    types: [closed]
   # 取りこぼしたときや、確認中の下書きを作り直したいときの手動実行
   workflow_dispatch:
 
@@ -39,6 +35,15 @@ jobs:
   # リリースが必要かどうかだけを判定する。不要なら後続をまるごと飛ばす
   check:
     name: check version
+    # マージされた `release` ラベル付き PR か、main からの手動実行のときだけ動く。
+    # fork からの PR は対象外(GITHUB_TOKEN が read-only でどのみち書き込めない)
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.labels.*.name, 'release'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,13 +56,11 @@ jobs:
       proceed: ${{ steps.gate.outputs.proceed }}
       state: ${{ steps.gate.outputs.state }}
     steps:
-      - name: Check the workflow runs on main
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::リリースは main から実行してください (現在: ${{ github.ref }})"
-          exit 1
-
+      # pull_request イベントの既定の ref はマージコミットではないので、
+      # マージ後の main の中身(= merge_commit_sha)を明示的に取る
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
 
       # バージョンはコードから読む。あわせて 5 ファイルが揃っているかも確認する。
       # ここでの不一致は main に不整合が入ったということなので、黙らせず落とす
@@ -110,11 +113,13 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SHA: ${{ github.sha }}
+      SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       TAG: ${{ needs.check.outputs.tag }}
       RELEASE_STATE: ${{ needs.check.outputs.state }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
