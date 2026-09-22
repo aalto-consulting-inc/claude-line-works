@@ -1,0 +1,9 @@
+# 空の issue は無効化し、種類に応じた導線へ振り分ける
+blank_issues_enabled: false
+contact_links:
+  - name: 脆弱性の報告(非公開)
+    url: https://github.com/aalto-consulting-inc/claude-line-works/security/advisories/new
+    about: セキュリティ上の問題は公開 issue ではなく、こちらから非公開で報告してください。
+  - name: 導入手順を確認する
+    url: https://github.com/aalto-consulting-inc/claude-line-works/blob/main/docs/setup-user.md
+    about: インストールやログインで詰まったときは、まず利用者向けのセットアップ手順を確認してください。

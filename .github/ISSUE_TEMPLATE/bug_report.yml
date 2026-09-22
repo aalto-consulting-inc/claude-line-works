@@ -1,0 +1,76 @@
+name: バグ報告
+description: 動作しない、想定と違う挙動をする場合の報告
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **認証情報そのものは貼り付けないでください。**
+        access_token / refresh_token / client_secret / 認可 code は、値ではなく「どこに何が出ていたか」を書いてください。
+
+        セキュリティ上の問題は公開 issue ではなく [非公開の報告窓口](https://github.com/aalto-consulting-inc/claude-line-works/security/advisories/new)へお願いします。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 症状
+      description: 何が起きたかを簡潔に。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: Claude に何を依頼したか、どのツールが呼ばれたかが分かると助かります。
+      placeholder: |
+        1. Claude に「お知らせ掲示板を要約して」と依頼
+        2. authorize を実行しブラウザでログイン
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した挙動
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: 利用環境
+      options:
+        - Claude Desktop(拡張機能 .mcpb)
+        - Claude Code(CLI / IDE プラグイン)
+        - その他・不明
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS
+        - Windows
+        - その他・不明
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: バージョン
+      description: Claude Desktop の拡張機能一覧、または `.claude-plugin/plugin.json` の `version`。
+      placeholder: "0.3.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: エラーメッセージ・ログ(任意)
+      description: 貼り付ける前に認証情報が含まれていないか確認してください。
+      render: text
