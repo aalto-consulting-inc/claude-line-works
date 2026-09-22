@@ -139,7 +139,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 プラグインは `.mcp.json` から `${CLAUDE_PLUGIN_ROOT}/dist/server.js` を直接起動するため、バンドルはリポジトリにコミットしている。ただし **PR ごとに手でビルドしてコミットする必要はない**。
 
-`server/**` を変更した PR には [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が反応し、バンドルを再ビルドして差分があれば `build: rebuild dist/server.js` として PR ブランチに自動コミットする(Dependabot PR も同様)。CI の同期チェックは PR では行わず、main への push とタグ push(リリース)で最終確認する。
+`server/**` を変更した PR には [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が反応し、バンドルを再ビルドして差分があれば `build: rebuild dist/server.js` として PR ブランチに自動コミットする(Dependabot PR も同様)。CI の同期チェックは PR では行わず、main への push とリリース時に最終確認する。
 
 制約:
 
@@ -154,12 +154,21 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 ### リリース
 
-1. **バージョンを上げる** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)
-2. **バンドルを更新してコミット** — リリース PR でも `dist.yml` が自動コミットする。手元で確認したいときは `cd server && npm run build`
-3. **main にマージ** — この時点で Claude Code(マーケットプレイス経由)の利用者に反映される
-4. **タグを push** — `git tag v<x.y.z> && git push origin v<x.y.z>`
+手元で `git tag` を打つ必要はない。GitHub 上で下書きリリースを作ると、[`.github/workflows/release.yml`](.github/workflows/release.yml) が中身を埋める。
 
-タグ push で [`.github/workflows/release.yml`](.github/workflows/release.yml) が動き、バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → **下書きの** GitHub Release を作成し `line-works.mcpb` を添付する。内容を確認して手動で publish すると、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す。
+1. **バージョンを上げて main にマージ** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)。`dist/server.js` はリリース PR でも `dist.yml` が自動コミットする。マージした時点で Claude Code(マーケットプレイス経由)の利用者に反映される
+2. **下書きリリースを作る** — Releases > **Draft a new release** で
+   - Choose a tag: `v<x.y.z>` を入力して **Create new tag on publish**
+   - Target: `main`
+   - **Save draft**(Publish ではなく下書き保存)
+3. **Action の完了を待つ** — バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → 下書きに `line-works.mcpb` を添付。本文が空なら自動生成のリリースノートも入れる(自分で本文を書いた場合は上書きしない)
+4. **Publish release** — 内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
+
+補足:
+
+- バージョン不一致やテスト失敗で Action が落ちた場合、下書きはそのまま残る。修正を main にマージしてから Actions で **Re-run jobs** すればよい(下書きを作り直す必要はない)
+- 下書きの本文を編集しても Action は再発火しない(自分の更新でループするため `edited` は購読していない)
+- タグを直接 push しても何も起きない。リリースは必ず GitHub 上の下書きから始める
 
 ## TODO
 

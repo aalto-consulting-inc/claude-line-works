@@ -29,7 +29,7 @@ jobs:
       - name: Rebuild bundle
         run: npm run build
       # PR では dist.yml が bot コミットで dist/ を同期するため、ここでは検証しない。
-      # main への push(= マージ後)と release.yml のタグ時に最終チェックする。
+      # main への push(= マージ後)と release.yml のリリース時に最終チェックする。
       - name: Check dist/server.js is up to date
         if: github.event_name == 'push'
         run: git diff --exit-code -- ../dist
