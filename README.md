@@ -177,8 +177,8 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
 
 - 下書きの Target は発火時の main の SHA に固定される。Publish までに main が進んでも、ビルドした中身とタグの指す commit はずれない
 - `version` は 5 ファイルに散っている。更新対象の定義は [`scripts/bump-version.mjs`](scripts/bump-version.mjs) が持ち、Bump version は書き換えに、Release は `--check` での突き合わせに同じ定義を使う。手元で上げたい場合は `node scripts/bump-version.mjs <x.y.z>` + `cd server && npm run build`
-- Bump version は push と PR 作成に `DIST_BOT_TOKEN` を使う。`GITHUB_TOKEN` で作った PR には CI が付かず、必須ステータスチェックを満たせないため(`dist.yml` と同じ理由)。ラベル操作のため `Issues` と `Pull requests` の書き込み権限も要る
-- Release の発火条件は `release` ラベル付き PR のマージ。ラベルは Bump version が付ける(無ければ作る)。パスで判定すると、依存更新で `server/package.json` が触られただけでも発火してしまうため
+- Bump version は push と PR 作成に `DIST_BOT_TOKEN` を使う。`GITHUB_TOKEN` で作った PR には CI が付かず、必須ステータスチェックを満たせないため(`dist.yml` と同じ理由)。PR 作成とラベル付与のため `Pull requests` の書き込み権限も要る
+- Release の発火条件は `release` ラベル付き PR のマージ。ラベルは Bump version が付ける(リポジトリに `release` ラベルが必要)。パスで判定すると、依存更新で `server/package.json` が触られただけでも発火してしまうため
 - 同じバージョンで再度マージされても、タグや公開済みリリースがあればビルドせずに終わる
 - 確認中の下書きを自動で差し替えることはない。下書きが既にある状態で作り直したい場合だけ、[Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) を手動実行する
 - バージョン不一致やテスト失敗で落ちた場合、下書きは作られない。修正後に Release を手動実行する

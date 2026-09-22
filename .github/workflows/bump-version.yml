@@ -4,7 +4,8 @@
 #   1. Actions > Bump version > Run workflow でバージョン(例 0.3.2)を入力して実行
 #   2. 出来た PR の内容を確認してマージ。マージで release.yml が発火し下書きリリースが出来る
 #
-# release.yml は `release` ラベルでこの PR を識別する。ラベルが無ければここで作る。
+# release.yml は `release` ラベルでこの PR を識別する。ラベルはリポジトリに
+# あらかじめ作っておく(無ければ PR を作る前に失敗させる)。
 #
 # 設計上の要点:
 # - 更新対象の定義は scripts/bump-version.mjs に置く。release.yml の整合チェックも
@@ -131,14 +132,11 @@ jobs:
 
       - name: Open a pull request
         run: |
-          # release.yml はこのラベルで発火する。無ければ作る(既にあれば何もしない)
+          # release.yml はこのラベルで発火する。無いまま PR を作ると、リリースされない
+          # PR が出来上がって原因が分かりにくいので、手前で確認する
           if ! gh api "repos/$REPO/labels/release" >/dev/null 2>&1; then
-            if ! gh label create release \
-              --description "リリース対象のバージョン更新 PR。マージで Release workflow が発火する" \
-              --color 0E8A16 --repo "$REPO"; then
-              echo "::error title=ラベル release を作成できない::DIST_BOT_TOKEN に Issues = Read and write を付けるか、手でラベルを作成してください"
-              exit 1
-            fi
+            echo "::error title=ラベル release が無い::リポジトリの Issues > Labels で release ラベルを作成してください"
+            exit 1
           fi
 
           body=$(cat <<EOS
