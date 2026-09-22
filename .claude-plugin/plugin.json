@@ -1,14 +1,14 @@
 {
   "name": "line-works",
-  "displayName": "LINE WORKS 掲示板",
-  "version": "0.2.0",
-  "description": "LINE WORKS の掲示板(Board)を Claude から読み取り、要約・検索・活用できるようにする読み取り専用プラグイン",
+  "displayName": "LINE WORKS",
+  "version": "0.3.0",
+  "description": "LINE WORKS を Claude から利用する MCP プラグイン",
   "author": {
     "name": "Aalto Consulting Inc."
   },
   "repository": "https://github.com/aalto-consulting-inc/claude-line-works",
   "license": "MIT",
-  "keywords": ["line-works", "board", "掲示板", "japan"],
+  "keywords": ["line-works", "mcp", "board", "掲示板", "japan"],
   "mcpServers": "./.mcp.json",
   "userConfig": {
     "client_id": {

@@ -16,7 +16,7 @@
 
 - [x] テスト用掲示板に投稿がある: 日本語・長文・HTML 装飾(業務報告掲示板の日報が該当)
 - [x] Claude Code CLI 検証時はマーケットプレイス経由 `/plugin install line-works@aalto-plugins` で起動
-- [x] Claude Desktop 検証時は Releases から `line-works-board.mcpb` を DL → 設定 → 拡張機能 からインストール
+- [x] Claude Desktop 検証時は Releases から `.mcpb`(v0.2.0 時点の名称は `line-works-board.mcpb`、以降は `line-works.mcpb`)を DL → 設定 → 拡張機能 からインストール
 
 ## 正常系
 
