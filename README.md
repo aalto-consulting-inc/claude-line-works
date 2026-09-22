@@ -166,10 +166,10 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
 
 ### リリース
 
-手元で `git tag` を打つ必要はない。Actions からバージョンを指定して実行すると、[`.github/workflows/release.yml`](.github/workflows/release.yml) が資産とリリースノート付きの下書きリリースを作る。人がやるのは中身を確認して Publish するだけ。
+手元で `git tag` を打つ必要はない。[Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) にバージョンを指定して実行すると、資産とリリースノート付きの下書きリリースが出来る。人がやるのは中身を確認して Publish するだけ。
 
 1. **バージョンを上げて main にマージ** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)。`dist/server.js` はリリース PR でも `dist.yml` が自動コミットする。マージした時点で Claude Code(マーケットプレイス経由)の利用者に反映される
-2. **workflow を実行** — Actions > **Release** > **Run workflow**。Use workflow from は `main`、バージョンに `0.3.1` のように入力して実行
+2. **workflow を実行** — [Release workflow](https://github.com/aalto-consulting-inc/claude-line-works/actions/workflows/release.yml) の **Run workflow** から。Use workflow from は `main`、バージョンに `0.3.1` のように入力して実行
 3. **Action の完了を待つ** — タグ重複チェック → バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成。`line-works.mcpb` と `line-works.mcpb.sha256` が添付され、本文には自動生成のリリースノートとチェックサムが入る
 4. **Publish release** — Releases で内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
 
