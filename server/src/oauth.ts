@@ -43,11 +43,30 @@ const CALLBACK_SUCCESS_HTML = `<!doctype html><html lang="ja"><meta charset="utf
 <p>このタブを閉じて、Claude に戻ってください。</p>
 </body></html>`;
 
+const HTML_ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+/**
+ * HTML の特殊文字をエスケープする。
+ *
+ * コールバック画面に埋め込むエラーメッセージには、認可サーバーが返した
+ * `error` クエリパラメータの中身がそのまま含まれる。これは呼び出し側で
+ * 任意の値を指定できるため、エスケープしないと反射型 XSS になる。
+ */
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
 const callbackErrorHtml = (message: string) => `<!doctype html><html lang="ja"><meta charset="utf-8">
 <title>認可エラー</title>
 <body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
 <h1>認可に失敗しました</h1>
-<p>${message}</p>
+<p>${escapeHtml(message)}</p>
 <p>Claude に戻って、もう一度お試しください。</p>
 </body></html>`;
 

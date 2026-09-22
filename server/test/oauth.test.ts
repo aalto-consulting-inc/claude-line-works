@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { NeedsAuthorizationError, OAuthManager } from "../src/oauth.js";
+import { escapeHtml, NeedsAuthorizationError, OAuthManager } from "../src/oauth.js";
 
 let dataDir: string;
 
@@ -206,5 +206,28 @@ describe("startAuthorization + コールバック", () => {
     } finally {
       m.stopCallbackServer();
     }
+  });
+});
+
+describe("escapeHtml", () => {
+  it("HTML の特殊文字をすべてエスケープする", () => {
+    expect(escapeHtml(`<>&"'`)).toBe("&lt;&gt;&amp;&quot;&#39;");
+  });
+
+  it("& を二重エスケープしない", () => {
+    // & を最初に置換しないと "&lt;" が "&amp;lt;" になる
+    expect(escapeHtml("&lt;")).toBe("&amp;lt;");
+    expect(escapeHtml("a & b")).toBe("a &amp; b");
+  });
+
+  it("認可エラーに混入したスクリプトを無害化する", () => {
+    // コールバック URL の error パラメータは呼び出し側が自由に指定できる
+    const injected = '認可が拒否されました (<script>alert(1)</script>)';
+    expect(escapeHtml(injected)).not.toContain("<script>");
+    expect(escapeHtml(injected)).toContain("&lt;script&gt;");
+  });
+
+  it("通常の文字列は変更しない", () => {
+    expect(escapeHtml("state が一致しません")).toBe("state が一致しません");
   });
 });

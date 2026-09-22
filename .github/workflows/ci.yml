@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# 各ジョブはチェックアウトと読み取りしか行わない。既定の権限に頼らず明示する
+permissions:
+  contents: read
+
 jobs:
   test:
     name: test (${{ matrix.os }})

@@ -38877,11 +38877,21 @@ var CALLBACK_SUCCESS_HTML = `<!doctype html><html lang="ja"><meta charset="utf-8
 <h1>\u8A8D\u53EF\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F</h1>
 <p>\u3053\u306E\u30BF\u30D6\u3092\u9589\u3058\u3066\u3001Claude \u306B\u623B\u3063\u3066\u304F\u3060\u3055\u3044\u3002</p>
 </body></html>`;
+var HTML_ESCAPES = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;"
+};
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
 var callbackErrorHtml = (message) => `<!doctype html><html lang="ja"><meta charset="utf-8">
 <title>\u8A8D\u53EF\u30A8\u30E9\u30FC</title>
 <body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
 <h1>\u8A8D\u53EF\u306B\u5931\u6557\u3057\u307E\u3057\u305F</h1>
-<p>${message}</p>
+<p>${escapeHtml(message)}</p>
 <p>Claude \u306B\u623B\u3063\u3066\u3001\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002</p>
 </body></html>`;
 var OAuthManager = class {
