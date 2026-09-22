@@ -139,7 +139,7 @@ node ../scripts/smoke.mjs   # バンドルのスモークテスト
 
 プラグインは `.mcp.json` から `${CLAUDE_PLUGIN_ROOT}/dist/server.js` を直接起動するため、バンドルはリポジトリにコミットしている。ただし **PR ごとに手でビルドしてコミットする必要はない**。
 
-`server/**` を変更した PR には [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が反応し、バンドルを再ビルドして差分があれば `build: rebuild dist/server.js` として PR ブランチに自動コミットする(Dependabot PR も同様)。CI の同期チェックは PR では行わず、main への push とリリース時に最終確認する。
+`server/**` を変更した PR には [`.github/workflows/dist.yml`](.github/workflows/dist.yml) が反応し、バンドルを再ビルドして差分があれば `build: rebuild dist/server.js` として PR ブランチに自動コミットする(Dependabot PR も同様)。CI の同期チェックは PR では行わず、main への push とリリースビルド時に最終確認する。
 
 制約:
 
@@ -166,22 +166,21 @@ CodeQL は **advanced setup**([`.github/workflows/codeql.yml`](.github/workflows
 
 ### リリース
 
-手元で `git tag` を打つ必要はない。GitHub 上で下書きリリースを作ると、[`.github/workflows/release.yml`](.github/workflows/release.yml) が中身を埋める。
+手元で `git tag` を打つ必要はない。Actions からバージョンを指定して実行すると、[`.github/workflows/release.yml`](.github/workflows/release.yml) が資産とリリースノート付きの下書きリリースを作る。人がやるのは中身を確認して Publish するだけ。
 
 1. **バージョンを上げて main にマージ** — `.claude-plugin/plugin.json` / `mcpb/manifest.json` / `server/package.json` の `version` を揃える(`cd server && npm version <x.y.z> --no-git-tag-version` + 残り 2 ファイルを手で更新)。`dist/server.js` はリリース PR でも `dist.yml` が自動コミットする。マージした時点で Claude Code(マーケットプレイス経由)の利用者に反映される
-2. **下書きリリースを作る** — Releases > **Draft a new release** で
-   - Choose a tag: `v<x.y.z>` を入力して **Create new tag on publish**
-   - Target: `main`
-   - **Save draft**(Publish ではなく下書き保存)
-3. **Action の完了を待つ** — バージョンとタグの一致確認 → テスト → `.mcpb` ビルド → 下書きに `line-works.mcpb` と `line-works.mcpb.sha256` を添付。本文が空なら自動生成のリリースノートも入れる(自分で本文を書いた場合は上書きしない)。どちらの場合も末尾にチェックサムを追記する
-4. **Publish release** — 内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
+2. **workflow を実行** — Actions > **Release** > **Run workflow**。Use workflow from は `main`、バージョンに `0.3.1` のように入力して実行
+3. **Action の完了を待つ** — タグ重複チェック → バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きリリース作成。`line-works.mcpb` と `line-works.mcpb.sha256` が添付され、本文には自動生成のリリースノートとチェックサムが入る
+4. **Publish release** — Releases で内容を確認して公開。git タグはこのとき初めて作られ、Claude Desktop の利用者向けリンク(`releases/latest/download/line-works.mcpb`)が新版を指す
 
 補足:
 
-- バージョン不一致やテスト失敗で Action が落ちた場合、下書きはそのまま残る。修正を main にマージしてから Actions で **Re-run jobs** すればよい(下書きを作り直す必要はない)
-- 下書きの本文を編集しても Action は再発火しない(自分の更新でループするため `edited` は購読していない)
-- タグを直接 push しても何も起きない。リリースは必ず GitHub 上の下書きから始める
-- チェックサムはリリースノート内を `<!-- sha256:start -->` 〜 `<!-- sha256:end -->` で囲んで挿入する。Re-run しても重複せず、囲みの外に書いた本文は保持される
+- 下書きの Target は実行時の main の SHA に固定される。Publish までに main が進んでも、ビルドした中身とタグの指す commit はずれない
+- バージョン不一致やテスト失敗で落ちた場合、下書きは作られない。修正を main にマージしてから同じバージョンで再実行すればよい
+- 既に下書きがある状態で再実行すると、資産を差し替えて本文を更新する。自分で書き換えた本文は保持される
+- タグを直接 push しても、GitHub 上で下書きを手で作っても何も起きない。リリースは必ず Actions から始める(`release` イベントは下書きの作成では発火しないため)
+- 公開済みのリリースや既存のタグと同じバージョンを指定すると、上書きせずに失敗する
+- チェックサムはリリースノート内を `<!-- sha256:start -->` 〜 `<!-- sha256:end -->` で囲んで挿入する。再実行しても重複せず、囲みの外に書いた本文は保持される
 
 ## TODO
 

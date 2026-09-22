@@ -1,59 +1,95 @@
-# GitHub 上で「下書きリリース」を作ると、この workflow が中身を埋める。
+# Actions からバージョンを指定して実行すると、この workflow が下書きリリースを作る。
+# 人がやることは中身を確認して Publish するだけ。
 #
 # 手順:
-#   1. Releases > Draft a new release で新しいタグ `v<x.y.z>` を入力し、Target を main にして Save draft
-#   2. この workflow が発火し、バージョン整合チェック → テスト → `.mcpb` ビルド → 下書きに添付
-#   3. 内容を確認して Publish release。git タグはこのとき初めて作られる
+#   1. バージョンを上げた PR を main にマージする
+#   2. Actions > Release > Run workflow でバージョン(例 0.3.1)を入力して実行
+#   3. バージョン整合チェック → テスト → `.mcpb` ビルド → 資産とノート付きの下書きリリースが出来る
+#   4. 内容を確認して Publish release。git タグはこのとき初めて作られる
 #
 # 設計上の要点:
-# - `release: [created]` は「下書きが保存された」「下書きを経ずに公開された」のどちらでも発火する。
-#   `edited` は購読しない。この workflow 自身が下書きを更新するため再発火してループする。
-# - 下書きの時点ではタグがまだ存在しない。checkout する ref は下書きなら target_commitish(= main)、
-#   公開済みのリリースならタグを使う。
-# - `gh release upload` / `edit` はタグ名で下書きも解決できる(公開済みリリースの API で 404 になった場合、
-#   下書き一覧から突き合わせる)。
-# - GITHUB_TOKEN が作ったリリースは workflow を発火しないが、ここは人が UI で作るので問題ない。
+# - `release: [created]` は draft では発火しない(GitHub の仕様)。下書き作成を起点にはできないため、
+#   下書きそのものをこの workflow が作る。
+# - 下書きの target は dispatch 時の main の SHA に固定する。Publish までに main が進んでも、
+#   ビルドした中身とタグの指す commit がずれない。
+# - ビルドが全部通ってから下書きを作る。途中で落ちたときに中途半端な下書きを残さない。
+# - 再実行時に下書きが既にあれば、資産を差し替えて本文を更新する(手で書いた本文は保持する)。
 name: Release
 
 on:
-  release:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'リリースするバージョン (例: 0.3.1)'
+        required: true
+        type: string
 
 permissions: {}
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: build and attach
+    name: build and draft
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      TAG: ${{ github.event.release.tag_name }}
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
     steps:
+      # 入力は人が打つ任意テキスト。以降のステップで使う前にここで形を固定する
+      - name: Resolve tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::バージョン ($INPUT_VERSION) が x.y.z 形式ではありません"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=v$version" >> "$GITHUB_ENV"
+
+      - name: Check the workflow runs on main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::リリースは main から実行してください (現在: ${{ github.ref }})"
+          exit 1
+
       - uses: actions/checkout@v4
-        with:
-          # 下書き: タグ未作成なので Target のブランチ。公開済み: タグそのもの
-          ref: ${{ github.event.release.draft && github.event.release.target_commitish || github.event.release.tag_name }}
+
+      # 公開済みのリリースやタグを踏み潰さない。下書きだけは再実行として引き継ぐ
+      - name: Check the tag is free
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::タグ $TAG は既に存在します"
+            exit 1
+          fi
+          state=$(gh api "repos/$REPO/releases?per_page=100" \
+            --jq "[.[] | select(.tag_name == \"$TAG\")][0] | if . == null then \"none\" elif .draft then \"draft\" else \"published\" end")
+          if [ "$state" = "published" ]; then
+            echo "::error::リリース $TAG は既に公開されています"
+            exit 1
+          fi
+          echo "RELEASE_STATE=$state" >> "$GITHUB_ENV"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # 3 つのマニフェストの version とタグがずれたままリリースするのを防ぐ
+      # 3 つのマニフェストの version と入力がずれたままリリースするのを防ぐ
       - name: Check versions match the tag
         run: |
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::タグ名 ($TAG) が v<x.y.z> 形式ではありません"
-            exit 1
-          fi
-          version="${TAG#v}"
           for f in .claude-plugin/plugin.json mcpb/manifest.json server/package.json; do
             v=$(node -p "require('./$f').version")
-            if [ "$v" != "$version" ]; then
-              echo "::error file=$f::version ($v) がタグ ($TAG) と一致しません"
+            if [ "$v" != "$VERSION" ]; then
+              echo "::error file=$f::version ($v) が指定バージョン ($VERSION) と一致しません"
               exit 1
             fi
           done
@@ -84,31 +120,22 @@ jobs:
           sha256sum line-works.mcpb > line-works.mcpb.sha256
           cat line-works.mcpb.sha256
 
-      - name: Attach assets to the release
+      # 本文を組み立てる。
+      # - 新規作成時は自動生成のリリースノート
+      # - 再実行時は既存の下書きの本文を保持する(手で書いた内容を上書きしない)
+      # - 末尾にチェックサムを追記する。マーカーで囲んで毎回置き換えるので再実行しても重複しない
+      - name: Compose release notes
         run: |
-          gh release upload "$TAG" \
-            build/line-works.mcpb \
-            build/line-works.mcpb.sha256 \
-            --clobber --repo "$REPO"
-
-      # リリースノートを確定させる。
-      # - 本文が空のときだけ自動生成ノートを入れる。手で書いた本文は上書きしない
-      # - 最後にチェックサムを追記する。マーカーで囲んで毎回置き換えるので再実行しても重複しない
-      #
-      # 下書きの本文はイベントペイロードから取る。`gh release view` はタグ未作成の
-      # 下書きを解決できないことがあるため使わない。
-      - name: Update release notes
-        env:
-          TARGET: ${{ github.event.release.target_commitish }}
-          # 本文は人が書く任意テキスト。run に直接展開するとスクリプトインジェクションに
-          # なるため、必ず環境変数経由で受け取る
-          BODY: ${{ github.event.release.body }}
-        run: |
-          if [ -z "$BODY" ]; then
+          body=""
+          if [ "$RELEASE_STATE" = "draft" ]; then
+            body=$(gh api "repos/$REPO/releases?per_page=100" \
+              --jq "[.[] | select(.tag_name == \"$TAG\")][0].body // \"\"")
+          fi
+          if [ -z "$body" ]; then
             gh api --method POST "repos/$REPO/releases/generate-notes" \
-              -f tag_name="$TAG" -f target_commitish="$TARGET" --jq .body > /tmp/body.md
+              -f tag_name="$TAG" -f target_commitish="$SHA" --jq .body > /tmp/body.md
           else
-            printf '%s\n' "$BODY" > /tmp/body.md
+            printf '%s\n' "$body" > /tmp/body.md
             sed -i '/<!-- sha256:start -->/,/<!-- sha256:end -->/d' /tmp/body.md
           fi
           {
@@ -124,4 +151,21 @@ jobs:
             echo '(Windows は `certutil -hashfile line-works.mcpb SHA256`)'
             echo '<!-- sha256:end -->'
           } >> /tmp/body.md
-          gh release edit "$TAG" --notes-file /tmp/body.md --repo "$REPO"
+
+      - name: Create or update the draft release
+        run: |
+          if [ "$RELEASE_STATE" = "draft" ]; then
+            gh release edit "$TAG" --target "$SHA" --notes-file /tmp/body.md --repo "$REPO"
+            gh release upload "$TAG" \
+              build/line-works.mcpb \
+              build/line-works.mcpb.sha256 \
+              --clobber --repo "$REPO"
+          else
+            gh release create "$TAG" \
+              build/line-works.mcpb \
+              build/line-works.mcpb.sha256 \
+              --draft --target "$SHA" --title "$TAG" --notes-file /tmp/body.md --repo "$REPO"
+          fi
+          echo "### 下書きリリース $TAG を作成しました" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "内容を確認して Publish してください: https://github.com/$REPO/releases" >> "$GITHUB_STEP_SUMMARY"
